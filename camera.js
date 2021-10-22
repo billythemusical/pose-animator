@@ -29,6 +29,7 @@ import {PoseIllustration} from './illustrationGen/illustration';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 
+import * as bonesSVG from './resources/samples/my-bones-3.svg';
 import * as girlSVG from './resources/illustration/girl.svg';
 import * as boySVG from './resources/illustration/boy.svg';
 import * as abstractSVG from './resources/illustration/abstract.svg';
@@ -63,6 +64,7 @@ const avatarSvgs = {
   'abstract': abstractSVG.default,
   'blathers': blathersSVG.default,
   'tom-nook': tomNookSVG.default,
+  'bones': bonesSVG.default
 };
 
 /**
@@ -78,6 +80,7 @@ async function setupCamera() {
   const video = document.getElementById('video');
   video.width = videoWidth;
   video.height = videoHeight;
+  video.style = "display: none"
 
   const stream = await navigator.mediaDevices.getUserMedia({
     'audio': false,
@@ -110,9 +113,9 @@ const defaultStride = 16;
 const defaultInputResolution = 200;
 
 const guiState = {
-  avatarSVG: Object.keys(avatarSvgs)[0],
+  avatarSVG: Object.keys(avatarSVGs)[0],
   debug: {
-    showDetectionDebug: true,
+    showDetectionDebug: false,
     showIllustrationDebug: false,
   },
 };

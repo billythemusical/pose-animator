@@ -27,6 +27,7 @@ import {PoseIllustration} from './illustrationGen/illustration';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {toggleLoadingUI, setStatusText} from './utils/demoUtils';
 
+import * as bonesSVG from './resources/samples/my-bones-3.svg';
 import * as boySVG from './resources/illustration/boy.svg';
 import * as girlSVG from './resources/illustration/girl.svg';
 import * as abstractSVG from './resources/illustration/abstract.svg';
@@ -56,6 +57,7 @@ const avatarSvgs = {
   'abstract': abstractSVG.default,
   'blathers': blathersSVG.default,
   'tom-nook': tomNookSVG.default,
+  'bones': bonesSVG.default,
 };
 const sourceImages = {
   'boy_doughnut': boy_doughnut.default,
@@ -206,11 +208,10 @@ async function testImageAndEstimatePoses() {
 
 let guiState = {
   // Selected image
-  sourceImage: Object.keys(sourceImages)[0],
-  avatarSVG: Object.keys(avatarSvgs)[0],
+  avatarSVG: avatarSvgs[bones],
   // Detection debug
-  showKeypoints: true,
-  showSkeleton: true,
+  showKeypoints: false,
+  showSkeleton: false,
   // Illustration debug
   showCurves: false,
   showLabels: false,
@@ -221,7 +222,6 @@ function setupGui() {
   
   const imageControls = gui.addFolder('Image');
   imageControls.open();
-  gui.add(guiState, 'sourceImage', Object.keys(sourceImages)).onChange(() => testImageAndEstimatePoses());
   gui.add(guiState, 'avatarSVG', Object.keys(avatarSvgs)).onChange(() => loadSVG(avatarSvgs[guiState.avatarSVG]));
   
   const debugControls = gui.addFolder('Debug controls');
