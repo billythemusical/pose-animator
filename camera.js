@@ -30,11 +30,11 @@ import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 
 import * as bonesSVG from './resources/samples/my-bones-3.svg';
-import * as girlSVG from './resources/illustration/girl.svg';
-import * as boySVG from './resources/illustration/boy.svg';
-import * as abstractSVG from './resources/illustration/abstract.svg';
-import * as blathersSVG from './resources/illustration/blathers.svg';
-import * as tomNookSVG from './resources/illustration/tom-nook.svg';
+// import * as girlSVG from './resources/illustration/girl.svg';
+// import * as boySVG from './resources/illustration/boy.svg';
+// import * as abstractSVG from './resources/illustration/abstract.svg';
+// import * as blathersSVG from './resources/illustration/blathers.svg';
+// import * as tomNookSVG from './resources/illustration/tom-nook.svg';
 
 // Camera stream video element
 let video;
@@ -59,11 +59,6 @@ let nmsRadius = 30.0;
 let mobile = false;
 const stats = new Stats();
 const avatarSvgs = {
-  'girl': girlSVG.default,
-  'boy': boySVG.default,
-  'abstract': abstractSVG.default,
-  'blathers': blathersSVG.default,
-  'tom-nook': tomNookSVG.default,
   'bones': bonesSVG.default
 };
 
@@ -113,8 +108,9 @@ const defaultStride = 16;
 const defaultInputResolution = 200;
 
 const guiState = {
-  avatarSVG: Object.keys(avatarSVGs)[0],
+  avatarSVG: Object.keys(avatarSvgs)[0],
   debug: {
+    showOutput: false,
     showDetectionDebug: false,
     showIllustrationDebug: false,
   },
@@ -130,13 +126,14 @@ function setupGui(cameras) {
   }
 
   const gui = new dat.GUI({width: 300});
+  gui.closed = true;
 
   let multi = gui.addFolder('Image');
   gui.add(guiState, 'avatarSVG', Object.keys(avatarSvgs)).onChange(() => parseSVG(avatarSvgs[guiState.avatarSVG]));
   multi.open();
 
   let output = gui.addFolder('Debug control');
-  output.add(guiState.debug, 'showDetectionDebug');
+  output.add(guiState.debug, 'showDetectionDebug').onChange(hideShowCamera);
   output.add(guiState.debug, 'showIllustrationDebug');
   output.open();
 }
@@ -256,6 +253,18 @@ function setupCanvas() {
   canvasScope.setup(canvas);
 }
 
+const output = document.getElementById('output')
+
+function hideShowCamera() {
+  console.log('running hideSHowCamera')
+  if(guiState.debug.showDetectionDebug == false) {
+    output.style.display = "none"
+  } else {
+    output.style.display = "block"
+    console.log('hiding camera')
+  }
+}
+
 /**
  * Kicks off the demo by loading the posenet model, finding and loading
  * available camera devices, and setting off the detectPoseInRealTime function.
@@ -291,7 +300,7 @@ export async function bindPage() {
   }
 
   setupGui([], posenet);
-  setupFPS();
+  // setupFPS();
   
   toggleLoadingUI(false);
   detectPoseInRealTime(video, posenet);

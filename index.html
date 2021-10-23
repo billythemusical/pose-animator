@@ -108,7 +108,7 @@
 </head>
 
 <body>
-    <div id="info" style='display:none'>
+    <div id="info">
     </div>
     <div id="loading" style='position: relative; left: 0'>
         <span class="spinner-text" id="status">
@@ -117,7 +117,7 @@
         <div class="sk-spinner sk-spinner-pulse"></div>
     </div>
     <div class="canvas-container">
-        <div id='main' style='display:none'>
+        <div id='main'>
             <video id="video" playsinline style=" -moz-transform: scaleX(-1);
             -o-transform: scaleX(-1);
             -webkit-transform: scaleX(-1);
@@ -125,17 +125,17 @@
             display: none;
             ">
             </video>
-            <canvas id="output" class="camera-canvas" style="display: none;"></canvas>
-            <canvas id="keypoints" class="camera-canvas" ></canvas>
+            <canvas id="output" class="camera-canvas"></canvas>
+            <canvas id="keypoints" class="camera-canvas"></canvas>
         </div>
         <canvas class="illustration-canvas"></cavnas>
     </div>
     <div class="footer">
         <div class="footer-text">
+          <img src="resources/images/qr-code.png" width=100 height=100 />
           <p>
             Based on Pose Animator by yemount - https://github.com/yemount/pose-animator
           </p>
-          <img src="resources/images/qr-code.png" width=100 height=100 />
         </div>
       </div>
     <script src="camera.js"></script>
