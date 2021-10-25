@@ -29,7 +29,7 @@ import {PoseIllustration} from './illustrationGen/illustration';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 
-import * as bonesSVG from './resources/samples/my-bones-3.svg';
+import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
 // import * as boySVG from './resources/illustration/boy.svg';
 // import * as abstractSVG from './resources/illustration/abstract.svg';
@@ -110,7 +110,7 @@ const defaultInputResolution = 200;
 const guiState = {
   avatarSVG: Object.keys(avatarSvgs)[0],
   debug: {
-    showOutput: false,
+    detectFaces: false,
     showDetectionDebug: false,
     showIllustrationDebug: false,
   },
@@ -133,9 +133,13 @@ function setupGui(cameras) {
   multi.open();
 
   let output = gui.addFolder('Debug control');
+  output.add(guiState.debug, 'detectFaces');
   output.add(guiState.debug, 'showDetectionDebug').onChange(hideShowCamera);
   output.add(guiState.debug, 'showIllustrationDebug');
   output.open();
+
+  // initially hide the camera
+  hideShowCamera();
 }
 
 /**
@@ -177,7 +181,9 @@ function detectPoseInRealTime(video) {
 
     // Creates a tensor from an image
     const input = tf.browser.fromPixels(canvas);
-    faceDetection = await facemesh.estimateFaces(input, false, false);
+    if (guiState.debug.detectFaces) {
+      faceDetection = await facemesh.estimateFaces(input, false, false);
+    }
     let all_poses = await posenet.estimatePoses(video, {
       flipHorizontal: true,
       decodingMethod: 'multi-person',
@@ -197,12 +203,14 @@ function detectPoseInRealTime(video) {
           drawSkeleton(keypoints, minPartConfidence, keypointCtx);
         }
       });
-      faceDetection.forEach(face => {
-        Object.values(facePartName2Index).forEach(index => {
-            let p = face.scaledMesh[index];
-            drawPoint(keypointCtx, p[1], p[0], 2, 'red');
+      if(guiState.debug.detectFaces) {
+        faceDetection.forEach(face => {
+          Object.values(facePartName2Index).forEach(index => {
+              let p = face.scaledMesh[index];
+              drawPoint(keypointCtx, p[1], p[0], 2, 'red');
+          });
         });
-      });
+      }
     }
 
     canvasScope.project.clear();
@@ -300,7 +308,7 @@ export async function bindPage() {
   }
 
   setupGui([], posenet);
-  // setupFPS();
+  setupFPS();
   
   toggleLoadingUI(false);
   detectPoseInRealTime(video, posenet);
