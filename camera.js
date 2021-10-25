@@ -29,7 +29,7 @@ import {PoseIllustration} from './illustrationGen/illustration';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 
-import * as bonesSVG from './resources/samples/my-bones-3.svg';
+import * as bonesSVG from './resources/samples/my-bones-4.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
 // import * as boySVG from './resources/illustration/boy.svg';
 // import * as abstractSVG from './resources/illustration/abstract.svg';
@@ -46,7 +46,7 @@ let faceDetection = null;
 let illustration = null;
 let canvasScope;
 let canvasWidth = 800;
-let canvasHeight = 800;
+let canvasHeight = 1600; // canvas size for skeleton
 
 // ML models
 let facemesh;
