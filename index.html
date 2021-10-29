@@ -13,12 +13,14 @@
         }
 
         .canvas-container {
-            width: 1200px;
+            width: 800px;
             max-width: 100%;
             display: flex;
             justify-content: center;
             position: relative;
-
+            background-size: 100% 100%;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
         }
 
         .camera-canvas {
@@ -37,9 +39,6 @@
 
         .illustration-canvas {
             border: 1px solid #eeeeee;
-            background-size: 120% 100%;
-            /* background-attachment: fixed; */
-            background-repeat: no-repeat;
         }
 
         .footer {
@@ -133,11 +132,18 @@
             <canvas id="output" class="camera-canvas"></canvas>
             <canvas id="keypoints" class="camera-canvas"></canvas>
         </div>
-        <canvas class="illustration-canvas" style="background-image: url('resources/images/church.jpg');"></cavnas>
+        <canvas class="illustration-canvas" style="background-image: url('resources/images/background.png');"></cavnas>
+        <!-- <img src='resources/images/dance-crop.png' width=960 height=720 /> -->
     </div>
     <div class="footer">
+        <!-- <img src='resources/images/dance-crop.png' width=823 height=247 style="padding-left: 20px;"/> -->
+        <!-- <img src='resources/images/lets-dance-crop.png' width=800 height=200 style="padding-left: 30px;"/> -->
         <div class="footer-text">
             
+            <!-- <img src="resources/images/qr-code.png" width=200 height=200 /> -->
+            <!-- <p> -->
+                <!-- Based on Pose Animator by yemount - https://github.com/yemount/pose-animator -->
+            <!-- </p> -->
         </div>
       </div>
     <script src="camera.js"></script>
