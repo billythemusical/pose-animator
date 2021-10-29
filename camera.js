@@ -46,7 +46,7 @@ let faceDetection = null;
 let illustration = null;
 let canvasScope;
 let canvasWidth = 1280;
-let canvasHeight = 720; // canvas size for skeleton
+let canvasHeight = 900; // canvas size for skeleton
 
 // ML models
 let facemesh;
