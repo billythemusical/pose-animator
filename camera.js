@@ -36,6 +36,34 @@ import * as bonesSVG from './resources/samples/my-bones-6.svg';
 // import * as blathersSVG from './resources/illustration/blathers.svg';
 // import * as tomNookSVG from './resources/illustration/tom-nook.svg';
 
+import * as audioFiles from './resources/audio/*.mp3';
+import { notEqualStrict } from 'face-api.js/node_modules/@tensorflow/tfjs-core';
+import { repeatVector } from '@tensorflow/tfjs-layers/dist/exports_layers';
+
+const screams = new Array(38)
+
+function loadAudioFiles() {
+  Object.keys(audioFiles).forEach((file, i) => {
+    screams[i] = document.createElement('audio')
+    screams[i].src = audioFiles[file]
+    screams[i].volume = 0.1
+    document.body.append(screams[i])
+    // console.log('added this: ', screams[i])
+  })
+}
+
+loadAudioFiles()
+
+let index = 0;
+document.addEventListener('click', () => {
+  if ( index == screams.length - 1 ) {
+    index = 0;
+  }
+  screams[index].play()
+  console.log('just played screams[' + index + ']')
+  index++
+})
+
 // Camera stream video element
 let video;
 let videoWidth = 640;
@@ -166,6 +194,7 @@ function detectPoseInRealTime(video) {
   keypointCanvas.height = videoHeight;
 
   async function poseDetectionFrame() {
+
     // Begin monitoring code for frames per second
     stats.begin();
 
@@ -213,10 +242,24 @@ function detectPoseInRealTime(video) {
       }
     }
 
+
     canvasScope.project.clear();
+
+    // For tracking scream debounce times
+    currentTime = new Date()
+    if (lastTime < currentTime - debounceTime) {
+      canScream = true
+    } else {
+      canScream = false
+    }
 
     if (poses.length >= 1 && illustration) {
       Skeleton.flipPose(poses[0]);
+
+      if (canScream) {
+        checkArmsRaised(poses[0])
+      }
+      
 
       if (faceDetection && faceDetection.length > 0) {
         let face = Skeleton.toFaceFrame(faceDetection[0]);
@@ -323,6 +366,32 @@ async function parseSVG(target) {
   let skeleton = new Skeleton(svgScope);
   illustration = new PoseIllustration(canvasScope);
   illustration.bindSkeleton(skeleton, svgScope);
+}
+
+let canScream = false
+let currentTime = new Date()
+let lastTime = currentTime
+const debounceTime = 500
+
+function checkArmsRaised(poses) {
+  let l = 0, r = 0, n = 0
+  poses.keypoints.forEach((p) => {
+    if ( p.part == "nose" ) {
+      n = p.position.y
+    } else if (p.part == "leftWrist"){
+      l = p.position.y
+    } else if (p.part == "rightWrist") {
+      r = p.position.y
+    }
+  })
+
+  if(l < n && r < n) {
+      screams[index].play()
+      console.log('arms raised, played a sound')
+  }
+
+  index++
+  lastTime = currentTime
 }
     
 bindPage();
