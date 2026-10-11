@@ -21,7 +21,6 @@ import * as tf from '@tensorflow/tfjs';
 import * as paper from 'paper';
 import dat from 'dat.gui';
 import Stats from 'stats.js';
-import "babel-polyfill";
 
 import {drawKeypoints, drawPoint, drawSkeleton, isMobile, toggleLoadingUI, setStatusText} from './utils/demoUtils';
 import {SVGUtils} from './utils/svgUtils'

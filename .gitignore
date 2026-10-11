@@ -1,5 +1,6 @@
 .DS_Store
 .cache
+.vite
 # Firebase deployment config files
 .firebaserc
 firebase.json

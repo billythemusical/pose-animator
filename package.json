@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "private": true,
   "engines": {
-    "node": ">=8.9.0"
+    "node": ">=20"
   },
   "dependencies": {
     "@tensorflow-models/facemesh": "^0.0.1",
@@ -14,31 +14,23 @@
     "@tensorflow/tfjs": "^1.7.0",
     "@tensorflow/tfjs-converter": "^1.7.0",
     "@tensorflow/tfjs-core": "^1.7.0",
+    "dat.gui": "^0.7.2",
     "paper": "^0.12.15",
     "stats.js": "^0.17.0"
   },
   "scripts": {
-    "start": "cross-env NODE_ENV=development parcel index.html --no-hmr --open --no-source-maps",
-    "watch": "yarn start",
-    "build": "cross-env NODE_ENV=production parcel build index.html --public-url ./ --no-source-maps",
+    "dev": "vite --open",
+    "start": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
     "link-local": "yalc link"
   },
-  "browser": {
-    "crypto": false
-  },
   "devDependencies": {
-    "babel-core": "^6.26.3",
-    "babel-plugin-transform-runtime": "~6.23.0",
-    "babel-polyfill": "~6.26.0",
-    "babel-preset-env": "~1.6.1",
-    "babel-preset-es2017": "^6.24.1",
     "clang-format": "~1.2.2",
-    "cross-env": "^5.2.0",
-    "dat.gui": "^0.7.2",
     "eslint": "^4.19.1",
     "eslint-config-google": "^0.9.1",
-    "parcel-bundler": "~1.12.4",
+    "vite": "6.4.4",
     "yalc": "~1.0.0-pre.27"
   },
   "eslintConfig": {
