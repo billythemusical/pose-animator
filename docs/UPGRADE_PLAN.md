@@ -10,7 +10,7 @@ a decision. Phases are in order; each one leaves the app working.
 
 | Phase | What | Status |
 |---|---|---|
-| 0 | Clean up the build and dependencies | ☐ Not started |
+| 0 | Clean up the build and dependencies | ◐ Code done, needs a live webcam check |
 | 1 | Swap PoseNet for a modern pose model | ☐ Not started |
 | 2 | Show setup: projection, mirroring, framing | ☐ Not started |
 | 3 | Multiple bodies (same character) | ☐ Not started |
@@ -47,16 +47,21 @@ bonuses.
 
 Modern TF.js and MediaPipe packages won't bundle under Parcel 1 or Babel 6.
 
-- [ ] Choose one package manager: keep `yarn.lock`, drop `package-lock.json`
+- [x] Choose one package manager: keep `yarn.lock`, drop `package-lock.json`
       (it's already staged for deletion).
-- [ ] Replace `parcel-bundler` and the Babel 6 packages with **Vite**. Make
+- [x] Replace `parcel-bundler` and the Babel 6 packages with **Vite**. Make
       `index.html` the entry, load `camera.js` as `type="module"`, and remove
       `babel-polyfill`.
-- [ ] Remove unused dependencies: `face-api.js`, `@tensorflow/tfjs-converter`,
-      and the stray `tfjs-backend-cpu`.
-- [ ] Fix the stray `</cavnas>` typo in `index.html:135`.
-- [ ] Move `dat.gui` to `dependencies` (the app imports it at runtime), or
+- [x] Remove unused dependencies: `face-api.js` and the stray
+      `tfjs-backend-cpu`. (`tfjs-converter` stays until Phase 1, because
+      PoseNet needs it.)
+- [x] Fix the stray `</cavnas>` typo in `index.html:135`.
+- [x] Move `dat.gui` to `dependencies` (the app imports it at runtime), or
       replace it with `lil-gui`, which works as a drop-in.
+
+- [x] Replace `Array#flatten` (which only existed through `babel-polyfill`)
+      with `Array#flat` in `skeleton.js`.
+- [ ] **Live check:** run `yarn dev` and dance in front of the webcam.
 
 **Done when:** `yarn dev` serves the *current* PoseNet app with no errors and
 the skeleton dances exactly as before.
@@ -239,3 +244,8 @@ Add a dated line for each decision, benchmark or finished phase.
 
 - 2026-10-11: Plan written. Recommended MediaPipe Pose Landmarker over
   MoveNet and PoseNet. Phases 0–3 are the target for Oct 31.
+- 2026-10-11: Phase 0 code done. Moved to Vite 6.4: Vite 7 and later need
+  Node 20.19+, and this machine has 20.9. Upgrading Node would allow a newer
+  Vite but isn't needed. `yarn build` is clean. A headless Chrome smoke test
+  with a fake camera loads both models and the SVG with no errors. Still
+  needs a live webcam check.
