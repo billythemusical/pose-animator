@@ -10,7 +10,7 @@ a decision. Phases are in order; each one leaves the app working.
 
 | Phase | What | Status |
 |---|---|---|
-| 0 | Clean up the build and dependencies | ◐ Code done, needs a live webcam check |
+| 0 | Clean up the build and dependencies | ✅ Done |
 | 1 | Swap PoseNet for a modern pose model | ☐ Not started |
 | 2 | Show setup: projection, mirroring, framing | ☐ Not started |
 | 3 | Multiple bodies (same character) | ☐ Not started |
@@ -61,7 +61,7 @@ Modern TF.js and MediaPipe packages won't bundle under Parcel 1 or Babel 6.
 
 - [x] Replace `Array#flatten` (which only existed through `babel-polyfill`)
       with `Array#flat` in `skeleton.js`.
-- [ ] **Live check:** run `yarn dev` and dance in front of the webcam.
+- [x] **Live check:** run `yarn dev` and dance in front of the webcam.
 
 **Done when:** `yarn dev` serves the *current* PoseNet app with no errors and
 the skeleton dances exactly as before.
@@ -249,3 +249,5 @@ Add a dated line for each decision, benchmark or finished phase.
   Vite but isn't needed. `yarn build` is clean. A headless Chrome smoke test
   with a fake camera loads both models and the SVG with no errors. Still
   needs a live webcam check.
+- 2026-10-12: Phase 0 live check passed. **Baseline: about 19 fps** with
+  PoseNet and face detection off.
