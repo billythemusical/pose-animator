@@ -2,9 +2,10 @@
 <html>
 
 <head>
-    <title>PoseNet - Camera Feed Demo</title>
+    <title>Pose Animator</title>
     <style>
         body {
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -13,8 +14,6 @@
         }
 
         .canvas-container {
-            width: 800px;
-            max-width: 100%;
             display: flex;
             justify-content: center;
             position: relative;
@@ -37,8 +36,9 @@
             position: absolute;
         }
 
-        .illustration-canvas {
-            /* border: 1px solid #eeeeee; */
+        .illustration-canvas.no-background {
+            background-image: none !important;
+            background-color: black;
         }
 
         .footer {
@@ -116,7 +116,7 @@
     </div>
     <div id="loading" style='position: relative; left: 0'>
         <span class="spinner-text" id="status">
-            Loading PoseNet model...
+            Loading...
         </span>
         <div class="sk-spinner sk-spinner-pulse"></div>
     </div>

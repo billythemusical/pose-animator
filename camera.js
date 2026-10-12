@@ -27,6 +27,7 @@ import {PoseIllustration} from './illustrationGen/illustration';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
+import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './projection';
 
 import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
@@ -44,8 +45,9 @@ let videoHeight = 300;
 let faceDetection = null;
 let illustration = null;
 let canvasScope;
-let canvasWidth = 800;
-let canvasHeight = 1600; // canvas size for skeleton
+let illustrationCanvas;
+// Canvas size, mirroring and skeleton placement; tuned from the GUI.
+const settings = loadSettings();
 
 // ML models
 let facemesh;
@@ -107,6 +109,8 @@ const guiState = {
     // but detecting more lets us benchmark the cost of a crowd.
     maxPeople: 1,
   },
+  projection: settings.projection,
+  skeleton: settings.skeleton,
   debug: {
     detectFaces: false,
     showDetectionDebug: false,
@@ -127,7 +131,7 @@ function setupGui(cameras) {
   gui.closed = true;
 
   let multi = gui.addFolder('Image');
-  gui.add(guiState, 'avatarSVG', Object.keys(avatarSvgs)).onChange(() => parseSVG(avatarSvgs[guiState.avatarSVG]));
+  multi.add(guiState, 'avatarSVG', Object.keys(avatarSvgs)).onChange(() => parseSVG(avatarSvgs[guiState.avatarSVG]));
   multi.open();
 
   let pose = gui.addFolder('Pose detection');
@@ -136,6 +140,41 @@ function setupGui(cameras) {
   pose.add(guiState.pose, 'maxPeople', 1, 6, 1)
       .onChange((numPoses) => poseDetector.setOptions({numPoses}));
   pose.open();
+
+  // Everything in these two folders is saved, so a tuned projection setup
+  // survives reloads.
+  const onProjectionChange = () => {
+    applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
+    saveSettings(settings);
+  };
+  let projection = gui.addFolder('Projection');
+  projection.add(settings.projection, 'mirror').onChange(onProjectionChange);
+  projection.add(settings.projection, 'canvasWidth', 200, 3840, 10).onChange(onProjectionChange);
+  projection.add(settings.projection, 'canvasHeight', 200, 3840, 10).onChange(onProjectionChange);
+  projection.add(settings.projection, 'background', ['image', 'black']).onChange(onProjectionChange);
+  projection.add({fillWindow}, 'fillWindow').name('fill window');
+  projection.add({toggleFullscreen}, 'toggleFullscreen').name('fullscreen (F)');
+  projection.open();
+
+  let skeleton = gui.addFolder('Skeleton');
+  skeleton.add(settings.skeleton, 'size', 0.2, 4, 0.01).onChange(() => saveSettings(settings));
+  skeleton.add(settings.skeleton, 'stretch', 0.5, 4, 0.01).onChange(() => saveSettings(settings));
+  skeleton.add(settings.skeleton, 'offsetX', -100, 100, 0.5).name('left / right').onChange(() => saveSettings(settings));
+  skeleton.add(settings.skeleton, 'offsetY', -100, 100, 0.5).name('up / down').onChange(() => saveSettings(settings));
+  skeleton.add({resetLayout: () => {
+    Object.assign(settings.projection, DEFAULTS.projection);
+    Object.assign(settings.skeleton, DEFAULTS.skeleton);
+    onProjectionChange();
+    gui.__folders['Projection'].__controllers.forEach((c) => c.updateDisplay());
+    gui.__folders['Skeleton'].__controllers.forEach((c) => c.updateDisplay());
+  }}, 'resetLayout').name('reset layout');
+  skeleton.open();
+
+  // Keep the controls in sync when "fill window" changes the size.
+  fillWindowListeners.push(() => {
+    gui.__folders['Projection'].__controllers.forEach((c) => c.updateDisplay());
+    onProjectionChange();
+  });
 
   let output = gui.addFolder('Debug control');
   output.add(guiState.debug, 'detectFaces');
@@ -227,10 +266,8 @@ function detectPoseInRealTime(video) {
       }
     }
 
-    canvasScope.project.activeLayer.scale(
-      canvasWidth / videoWidth, 
-      canvasHeight / videoHeight, 
-      new canvasScope.Point(0, 0));
+    canvasScope.project.activeLayer.transform(
+        getSkeletonMatrix(canvasScope, settings, videoWidth, videoHeight));
 
     // End monitoring code for frames per second
     stats.end();
@@ -244,18 +281,41 @@ function detectPoseInRealTime(video) {
 function setupCanvas() {
   mobile = isMobile();
   if (mobile) {
-    canvasWidth = Math.min(window.innerWidth, window.innerHeight);
-    canvasHeight = canvasWidth;
     videoWidth *= 0.7;
     videoHeight *= 0.7;
-  }  
+  }
 
   canvasScope = paper.default;
-  let canvas = document.querySelector('.illustration-canvas');;
-  canvas.width = canvasWidth;
-  canvas.height = canvasHeight;
-  canvasScope.setup(canvas);
+  illustrationCanvas = document.querySelector('.illustration-canvas');
+  canvasScope.setup(illustrationCanvas);
+  applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
 }
+
+const fillWindowListeners = [];
+
+// Sizes the canvas to the window: in fullscreen, that's the projector.
+function fillWindow() {
+  settings.projection.canvasWidth = window.innerWidth;
+  settings.projection.canvasHeight = window.innerHeight;
+  fillWindowListeners.forEach((listener) => listener());
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    document.documentElement.requestFullscreen();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  // dat.gui already hides itself on H; hide the FPS meter with it.
+  if (e.key === 'h' || e.key === 'H') {
+    stats.dom.style.display = stats.dom.style.display === 'none' ? '' : 'none';
+  }
+});
 
 const output = document.getElementById('output')
 
