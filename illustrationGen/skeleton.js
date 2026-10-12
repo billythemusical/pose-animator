@@ -533,8 +533,10 @@ export class Skeleton {
             // Use new and old pose's confidence scores as weights to compute the new part position.
             let part1 = getPartFromPose(pose, partName);
             let part0 = (this.parts[partName] || part1);
-            let weight0 = part0.score / (part1.score + part0.score);
-            let weight1 = part1.score / (part1.score + part0.score);
+            let totalScore = part1.score + part0.score;
+            // If neither frame saw this joint, keep the new position rather than dividing by zero.
+            let weight0 = totalScore > 0 ? part0.score / totalScore : 0;
+            let weight1 = totalScore > 0 ? part1.score / totalScore : 1;
             let pos = part0.position.multiply(weight0).add(part1.position.multiply(weight1));
             this.parts[partName] = {
                 position: pos,

@@ -15,7 +15,6 @@
  * =============================================================================
  */
 
-import * as posenet_module from '@tensorflow-models/posenet';
 import * as facemesh_module from '@tensorflow-models/facemesh';
 import * as tf from '@tensorflow/tfjs';
 import * as paper from 'paper';
@@ -27,6 +26,7 @@ import {SVGUtils} from './utils/svgUtils'
 import {PoseIllustration} from './illustrationGen/illustration';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
+import {PoseDetector} from './pose/poseDetector';
 
 import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
@@ -49,10 +49,9 @@ let canvasHeight = 1600; // canvas size for skeleton
 
 // ML models
 let facemesh;
-let posenet;
+let poseDetector;
 let minPoseConfidence = 0.15;
 let minPartConfidence = 0.1;
-let nmsRadius = 30.0;
 
 // Misc
 let mobile = false;
@@ -100,14 +99,14 @@ async function loadVideo() {
   return video;
 }
 
-const defaultPoseNetArchitecture = 'MobileNetV1';
-const defaultQuantBytes = 2;
-const defaultMultiplier = 1.0;
-const defaultStride = 16;
-const defaultInputResolution = 200;
-
 const guiState = {
   avatarSVG: Object.keys(avatarSvgs)[0],
+  pose: {
+    model: 'lite',
+    // Only the first pose is drawn until multi-body support lands (Phase 3),
+    // but detecting more lets us benchmark the cost of a crowd.
+    maxPeople: 1,
+  },
   debug: {
     detectFaces: false,
     showDetectionDebug: false,
@@ -131,6 +130,13 @@ function setupGui(cameras) {
   gui.add(guiState, 'avatarSVG', Object.keys(avatarSvgs)).onChange(() => parseSVG(avatarSvgs[guiState.avatarSVG]));
   multi.open();
 
+  let pose = gui.addFolder('Pose detection');
+  pose.add(guiState.pose, 'model', ['lite', 'full'])
+      .onChange((model) => poseDetector.setOptions({model}));
+  pose.add(guiState.pose, 'maxPeople', 1, 6, 1)
+      .onChange((numPoses) => poseDetector.setOptions({numPoses}));
+  pose.open();
+
   let output = gui.addFolder('Debug control');
   output.add(guiState.debug, 'detectFaces');
   output.add(guiState.debug, 'showDetectionDebug').onChange(hideShowCamera);
@@ -150,7 +156,7 @@ function setupFPS() {
 }
 
 /**
- * Feeds an image to posenet to estimate poses - this is where the magic
+ * Feeds each video frame to the pose detector - this is where the magic
  * happens. This function loops with a requestAnimationFrame method.
  */
 function detectPoseInRealTime(video) {
@@ -168,7 +174,6 @@ function detectPoseInRealTime(video) {
     // Begin monitoring code for frames per second
     stats.begin();
 
-    let poses = [];
    
     videoCtx.clearRect(0, 0, videoWidth, videoHeight);
     // Draw video
@@ -178,21 +183,13 @@ function detectPoseInRealTime(video) {
     videoCtx.drawImage(video, 0, 0, videoWidth, videoHeight);
     videoCtx.restore();
 
-    // Creates a tensor from an image
-    const input = tf.browser.fromPixels(canvas);
     if (guiState.debug.detectFaces) {
+      // Only build the tensor when facemesh needs it.
+      const input = tf.browser.fromPixels(canvas);
       faceDetection = await facemesh.estimateFaces(input, false, false);
+      input.dispose();
     }
-    let all_poses = await posenet.estimatePoses(video, {
-      flipHorizontal: true,
-      decodingMethod: 'multi-person',
-      maxDetections: 1,
-      scoreThreshold: minPartConfidence,
-      nmsRadius: nmsRadius
-    });
-
-    poses = poses.concat(all_poses);
-    input.dispose();
+    const poses = poseDetector.detect(video, videoWidth, videoHeight);
 
     keypointCtx.clearRect(0, 0, videoWidth, videoHeight);
     if (guiState.debug.showDetectionDebug) {
@@ -273,20 +270,17 @@ function hideShowCamera() {
 }
 
 /**
- * Kicks off the demo by loading the posenet model, finding and loading
+ * Kicks off the demo by loading the pose model, finding and loading
  * available camera devices, and setting off the detectPoseInRealTime function.
  */
 export async function bindPage() {
   setupCanvas();
 
   toggleLoadingUI(true);
-  setStatusText('Loading PoseNet model...');
-  posenet = await posenet_module.load({
-    architecture: defaultPoseNetArchitecture,
-    outputStride: defaultStride,
-    inputResolution: defaultInputResolution,
-    multiplier: defaultMultiplier,
-    quantBytes: defaultQuantBytes
+  setStatusText('Loading pose model...');
+  poseDetector = await PoseDetector.create({
+    model: guiState.pose.model,
+    numPoses: guiState.pose.maxPeople,
   });
   setStatusText('Loading FaceMesh model...');
   facemesh = await facemesh_module.load();
@@ -306,11 +300,11 @@ export async function bindPage() {
     throw e;
   }
 
-  setupGui([], posenet);
+  setupGui([]);
   setupFPS();
   
   toggleLoadingUI(false);
-  detectPoseInRealTime(video, posenet);
+  detectPoseInRealTime(video);
 }
 
 navigator.getUserMedia = navigator.getUserMedia ||

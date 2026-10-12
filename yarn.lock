@@ -132,6 +132,11 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.25.12.tgz#9bdad8176be7811ad148d1f8772359041f46c6c5"
   integrity sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA==
 
+"@mediapipe/tasks-vision@1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@mediapipe/tasks-vision/-/tasks-vision-1.0.1.tgz#7ab992e2415d48e526934abd6390ffc208699fb1"
+  integrity sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==
+
 "@napi-rs/lzma-linux-x64-gnu@1.5.1":
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/@napi-rs/lzma-linux-x64-gnu/-/lzma-linux-x64-gnu-1.5.1.tgz#e57d4306966078662038094fb38eb9146dc3aea9"
@@ -273,11 +278,6 @@
   integrity sha512-7twdyRWB+1TOJE4nJdx0eBGjP6VNyaaqisxvH9RhjCBlv4qJeKsowpg0aCn8I5NpdAukH8wVw2rjfsBP4qPA/A==
   dependencies:
     "@tensorflow-models/blazeface" "0.0.5"
-
-"@tensorflow-models/posenet@^2.2.1":
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/@tensorflow-models/posenet/-/posenet-2.2.1.tgz#2f0a68d909842f59eec195f23c6f3d4cebc53fa8"
-  integrity sha512-n9/g6DfjAyrBTf/zt1haRCyWsgALxUCzg9/Ks3Y2mbYavRZVSCSTRPy/qlE5Hr4tLfyckGfDN14zmGTthNcg/g==
 
 "@tensorflow/tfjs-converter@1.7.1", "@tensorflow/tfjs-converter@^1.7.0":
   version "1.7.1"

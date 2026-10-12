@@ -15,8 +15,23 @@
  * =============================================================================
  */
 
-import * as posenet from '@tensorflow-models/posenet';
-import * as tf from '@tensorflow/tfjs';
+// Pairs of parts joined by a line in the debug skeleton (same as PoseNet's).
+const connectedPartNames = [
+  ['leftHip', 'leftShoulder'], ['leftElbow', 'leftShoulder'],
+  ['leftElbow', 'leftWrist'], ['leftHip', 'leftKnee'],
+  ['leftKnee', 'leftAnkle'], ['rightHip', 'rightShoulder'],
+  ['rightElbow', 'rightShoulder'], ['rightElbow', 'rightWrist'],
+  ['rightHip', 'rightKnee'], ['rightKnee', 'rightAnkle'],
+  ['leftShoulder', 'rightShoulder'], ['leftHip', 'rightHip'],
+];
+
+function getAdjacentKeyPoints(keypoints, minConfidence) {
+  const byPart = {};
+  keypoints.forEach((kp) => byPart[kp.part] = kp);
+  return connectedPartNames
+      .map(([a, b]) => [byPart[a], byPart[b]])
+      .filter(([a, b]) => a && b && a.score >= minConfidence && b.score >= minConfidence);
+}
 
 const color = 'aqua';
 const boundingBoxColor = 'red';
@@ -89,7 +104,7 @@ export function drawSegment([ay, ax], [by, bx], color, scale, ctx) {
  */
 export function drawSkeleton(keypoints, minConfidence, ctx, scale = 1) {
   const adjacentKeyPoints =
-      posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+      getAdjacentKeyPoints(keypoints, minConfidence);
 
   adjacentKeyPoints.forEach((keypoints) => {
     drawSegment(
