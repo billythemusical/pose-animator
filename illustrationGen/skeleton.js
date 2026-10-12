@@ -169,6 +169,34 @@ export class Bone {
         let p = anchor.add(dir.multiply(trans.transform.x * scale)).add(n.multiply(trans.transform.y * scale));
         return p;
     }
+
+    // Caches this frame's bone endpoints and direction. Called once per frame from Skeleton.update,
+    // so accumulateTransform() doesn't redo this work for each of the thousands of skinned points.
+    updateFrame() {
+        let p0 = this.kp0.currentPosition;
+        let p1 = this.kp1.currentPosition;
+        let dx = p1.x - p0.x;
+        let dy = p1.y - p0.y;
+        let len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0) {
+            dx /= len;
+            dy /= len;
+        }
+        this.frame = { x0: p0.x, y0: p0.y, x1: p1.x, y1: p1.y, dx: dx, dy: dy };
+    }
+
+    // Same math as transform(), but with plain numbers instead of Points: adds
+    // weight * (the point's current position from this bone) into out.x / out.y.
+    accumulateTransform(trans, weight, out) {
+        let f = this.frame;
+        let scale = this.type === 'face' ? this.skeleton.currentFaceScale : this.skeleton.currentBodyScale;
+        let a = trans.anchorPerc;
+        let tx = trans.transform.x * scale;
+        let ty = trans.transform.y * scale;
+        // The normal is the direction rotated 90 degrees: (-dy, dx).
+        out.x += weight * (f.x0 * (1 - a) + f.x1 * a + f.dx * tx - f.dy * ty);
+        out.y += weight * (f.y0 * (1 - a) + f.y1 * a + f.dy * tx + f.dx * ty);
+    }
 }
 
 function getKeyPointFromSVG(group, partName) {
@@ -522,6 +550,8 @@ export class Skeleton {
             bone.score = bone.parent.score;
             bone.latestCenter = bone.kp1.currentPosition.add(bone.kp0.currentPosition).divide(2);
         });
+        this.bones.forEach(bone => bone.updateFrame());
+        this.secondaryBones.forEach(bone => bone.updateFrame());
         // Recompute face & body bone scale.
         this.currentFaceScale = this.getTotalBoneLength(this.faceBones) / this.faceLen0;
         this.currentBodyScale = this.getTotalBoneLength(this.bodyBones) / this.bodyLen0;
@@ -662,12 +692,12 @@ export class Skeleton {
     }
 
     static getCurrentPosition(segment) {
-        let position = new paper.default.Point();
-        Object.keys(segment.skinning).forEach(boneName => {
+        let out = { x: 0, y: 0 };
+        for (let boneName in segment.skinning) {
             let bt = segment.skinning[boneName];
-            position = position.add(bt.bone.transform(bt.transform).multiply(bt.weight));
-        });
-        return position;
+            bt.bone.accumulateTransform(bt.transform, bt.weight, out);
+        }
+        return new paper.default.Point(out.x, out.y);
     }
 
     static flipPose(pose) {
