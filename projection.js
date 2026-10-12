@@ -5,8 +5,11 @@
 const STORAGE_KEY = 'pose-animator:projection';
 
 // These defaults reproduce the original layout: an 800x1600 canvas with the
-// 300x300 video stretched to fill it (2x taller than wide).
+// (square) video stretched to fill it, 2x taller than wide.
 export const DEFAULTS = {
+  camera: {
+    resolution: '640x360',
+  },
   projection: {
     mirror: false,
     canvasWidth: 800,
@@ -26,6 +29,7 @@ export function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved) {
+      Object.assign(settings.camera, saved.camera);
       Object.assign(settings.projection, saved.projection);
       Object.assign(settings.skeleton, saved.skeleton);
     }
@@ -38,6 +42,7 @@ export function loadSettings() {
 export function saveSettings(settings) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      camera: settings.camera,
       projection: settings.projection,
       skeleton: settings.skeleton,
     }));
@@ -57,8 +62,10 @@ export function applyCanvasSettings(canvasScope, canvas, projection) {
 
 /**
  * Matrix that maps the video-space drawing onto the canvas. The center of
- * the video lands at the center of the canvas (plus the offsets), scaled so
- * the video's width fills the canvas at size 1.
+ * the video lands at the center of the canvas (plus the offsets). At size 1,
+ * the central square of the video fills the canvas width. That matches the
+ * old square camera crop, so a wider camera view extends past the sides of
+ * the canvas until you lower the size.
  */
 export function getSkeletonMatrix(canvasScope, settings, videoWidth, videoHeight) {
   const {canvasWidth, canvasHeight, mirror} = settings.projection;
@@ -66,7 +73,7 @@ export function getSkeletonMatrix(canvasScope, settings, videoWidth, videoHeight
   // The canvas is mirrored with CSS after drawing, so flip the offset to keep
   // "right" meaning right on screen.
   const offsetX = mirror ? -settings.skeleton.offsetX : settings.skeleton.offsetX;
-  const scaleX = (canvasWidth / videoWidth) * size;
+  const scaleX = (canvasWidth / Math.min(videoWidth, videoHeight)) * size;
   const scaleY = scaleX * stretch;
   return new canvasScope.Matrix()
       .translate(

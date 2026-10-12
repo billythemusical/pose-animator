@@ -36,7 +36,8 @@ import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as blathersSVG from './resources/illustration/blathers.svg';
 // import * as tomNookSVG from './resources/illustration/tom-nook.svg';
 
-// Camera stream video element
+// Camera stream video element. The size is replaced by whatever the camera
+// actually delivers once it starts.
 let video;
 let videoWidth = 300;
 let videoHeight = 300;
@@ -73,22 +74,27 @@ async function setupCamera() {
   }
 
   const video = document.getElementById('video');
-  video.width = videoWidth;
-  video.height = videoHeight;
   video.style = "display: none"
 
+  // Ask for the camera's own aspect ratio rather than a square, so people at
+  // the sides of the view aren't cropped out.
+  const [width, height] = settings.camera.resolution.split('x').map(Number);
   const stream = await navigator.mediaDevices.getUserMedia({
     'audio': false,
     'video': {
       facingMode: 'user',
-      width: videoWidth,
-      height: videoHeight,
+      width: {ideal: width},
+      height: {ideal: height},
     },
   });
   video.srcObject = stream;
 
   return new Promise((resolve) => {
     video.onloadedmetadata = () => {
+      videoWidth = video.videoWidth;
+      videoHeight = video.videoHeight;
+      video.width = videoWidth;
+      video.height = videoHeight;
       resolve(video);
     };
   });
@@ -176,6 +182,16 @@ function setupGui(cameras) {
     onProjectionChange();
   });
 
+  // Takes effect on reload, since the camera stream has to restart.
+  let camera = gui.addFolder('Camera');
+  camera.add(settings.camera, 'resolution', ['640x360', '640x480', '1280x720'])
+      .name('resolution (reloads)')
+      .onChange(() => {
+        saveSettings(settings);
+        location.reload();
+      });
+  camera.add({actual: `${videoWidth}x${videoHeight}`}, 'actual').name('camera gives');
+
   let output = gui.addFolder('Debug control');
   output.add(guiState.debug, 'detectFaces');
   output.add(guiState.debug, 'showDetectionDebug').onChange(hideShowCamera);
@@ -214,13 +230,16 @@ function detectPoseInRealTime(video) {
     stats.begin();
 
    
-    videoCtx.clearRect(0, 0, videoWidth, videoHeight);
-    // Draw video
-    videoCtx.save();
-    videoCtx.scale(-1, 1);
-    videoCtx.translate(-videoWidth, 0);
-    videoCtx.drawImage(video, 0, 0, videoWidth, videoHeight);
-    videoCtx.restore();
+    // The mirrored video copy is only needed as facemesh input or to show
+    // the debug camera view, so skip it otherwise.
+    if (guiState.debug.detectFaces || guiState.debug.showDetectionDebug) {
+      videoCtx.clearRect(0, 0, videoWidth, videoHeight);
+      videoCtx.save();
+      videoCtx.scale(-1, 1);
+      videoCtx.translate(-videoWidth, 0);
+      videoCtx.drawImage(video, 0, 0, videoWidth, videoHeight);
+      videoCtx.restore();
+    }
 
     if (guiState.debug.detectFaces) {
       // Only build the tensor when facemesh needs it.
@@ -280,10 +299,6 @@ function detectPoseInRealTime(video) {
 
 function setupCanvas() {
   mobile = isMobile();
-  if (mobile) {
-    videoWidth *= 0.7;
-    videoHeight *= 0.7;
-  }
 
   canvasScope = paper.default;
   illustrationCanvas = document.querySelector('.illustration-canvas');
