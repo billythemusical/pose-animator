@@ -11,8 +11,8 @@ a decision. Phases are in order; each one leaves the app working.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Clean up the build and dependencies | ✅ Done |
-| 1 | Swap PoseNet for a modern pose model | ◐ Code done, needs a live check and benchmark |
-| 2 | Show setup: projection, mirroring, framing | ☐ Not started |
+| 1 | Swap PoseNet for a modern pose model | ✅ Done (crowd benchmark still open) |
+| 2 | Show setup: projection, mirroring, framing | ◐ Controls done, camera framing still to do |
 | 3 | Multiple bodies (same character) | ☐ Not started |
 | 4 | Multiple characters (stretch) | ☐ Not started |
 | 5 | Faces on (optional) | ☐ Not started |
@@ -117,7 +117,7 @@ the new model's output into that shape. With the adapter in place,
       has 11,820 point-bone influences, each allocating paper.js Points.
       Bones now cache their direction once per frame. Result: 1.9 ms, with
       identical output.
-- [ ] **Live check:** run `yarn dev` and dance. Raise each arm and check
+- [x] **Live check:** run `yarn dev` and dance. Raise each arm and check
       that left and right match.
 - [ ] **Benchmark on the show laptop** with 1, 2 and 4 people in frame. Write
       the fps for each in the Log.
@@ -130,7 +130,7 @@ drops below 24 fps, try MoveNet MultiPose before moving on.
 
 ## Phase 2: Show setup (projector behind a sheet)
 
-- [ ] **Mirror toggle for rear projection.** Viewers on the far side of the
+- [x] **Mirror toggle for rear projection.** Viewers on the far side of the
       sheet see the image flipped left to right. Add a GUI toggle that
       applies `scale(-1, 1)` to the illustration canvas, so a kid raising
       their right hand sees the skeleton's hand go up on their right.
@@ -138,12 +138,16 @@ drops below 24 fps, try MoveNet MultiPose before moving on.
       and it can't see through the sheet. Mount it at the side or top edge of
       the sheet, angled at the porch. Then add a GUI "crop/zoom" control so
       the area people actually stand in fills the projection.
+- [x] Canvas size controls, plus skeleton size, stretch and position controls,
+      all saved between reloads. "Fill window" plus fullscreen (`F`) sizes
+      the canvas to the projector.
 - [ ] Draw the canvas at the projector's resolution and at the camera's
       aspect ratio, so the image is no longer stretched. Add a fullscreen key
       (`f`).
-- [ ] Make the background pure black (`#000`), not `background.png`. Black
+- [x] Background control (image or black). The default stays as the image
+      for now. Make the background pure black (`#000`), not `background.png`. Black
       means no light on the sheet, so only the bones glow.
-- [ ] Turn off debug overlays and hide the FPS meter in show mode (key `d`).
+- [x] Hide the controls and the FPS meter for the show (key `H`).
 - [ ] Optional idle behavior: when nobody is in frame, show a "come dance!"
       prompt or a looping recorded skeleton.
 
@@ -273,3 +277,9 @@ Add a dated line for each decision, benchmark or finished phase.
   benefit is accuracy. PoseNet's detection time wasn't measured separately.
   For Phase 3, the skeleton costs about 3 ms per person to update and draw,
   and MediaPipe's landmark step also runs once per detected person.
+- 2026-10-12: Phase 1 live check passed, at **40–60 fps** on the show
+  laptop (up from 19).
+- 2026-10-12: Phase 2 controls added: Projection (mirror, canvas size, fill
+  window, fullscreen, background) and Skeleton (size, stretch, offsets,
+  reset), saved in localStorage. Defaults match the old 800×1600 layout.
+  With mirror on, the left/right slider still follows the laptop screen.
