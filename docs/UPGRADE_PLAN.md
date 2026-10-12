@@ -11,7 +11,7 @@ a decision. Phases are in order; each one leaves the app working.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Clean up the build and dependencies | ✅ Done |
-| 1 | Swap PoseNet for a modern pose model | ☐ Not started |
+| 1 | Swap PoseNet for a modern pose model | ◐ Code done, needs a live check and benchmark |
 | 2 | Show setup: projection, mirroring, framing | ☐ Not started |
 | 3 | Multiple bodies (same character) | ☐ Not started |
 | 4 | Multiple characters (stretch) | ☐ Not started |
@@ -93,22 +93,32 @@ The rest of the app reads PoseNet's format (`{keypoints: [{part, position:
 the new model's output into that shape. With the adapter in place,
 `skeleton.js` and `illustration.js` don't change.
 
-- [ ] Create `pose/poseDetector.js` with an `init()` function and a
-      `detect(video, timestampMs) → poses[]` function.
-- [ ] Create `pose/toPoseNetFormat.js` to map MediaPipe landmarks to PoseNet
+- [x] Create `pose/poseDetector.js` (`PoseDetector.create()` and
+      `detect(video, w, h) → poses[]`). Pinned to `tasks-vision@1.0.1`. Uses
+      the GPU delegate and falls back to CPU. Models are in `public/models`;
+      the WASM is copied on postinstall, so it works offline.
+- [x] Create `pose/toPoseNetFormat.js` to map MediaPipe landmarks to PoseNet
       part names. Landmarks are normalized 0–1, so multiply by the video
       size. Use `visibility` as the `score`, and use the mean visibility of
       the 13 joints we read as the pose `score`.
       Index map: 0 nose, 7 leftEar, 8 rightEar, 11/12 shoulders, 13/14
       elbows, 15/16 wrists, 23/24 hips, 25/26 knees, 27/28 ankles. Odd
       indices are left.
-- [ ] Mirroring: MediaPipe has no `flipHorizontal` option, so flip x in the
+- [x] Mirroring: MediaPipe has no `flipHorizontal` option, so flip x in the
       adapter (`x = width - x`) and keep the existing `Skeleton.flipPose`
       call. Check left and right with one raised arm.
-- [ ] Raise the camera from 300×300 to 640×480 or 1280×720 (use whatever the
-      webcam gives natively).
-- [ ] Guard `updatePoseParts` against `0/0`. If both the old and new score
+- [→] Raise the camera resolution. **Moved to Phase 2:** it has to change
+      together with the canvas aspect ratio, or the skeleton gets stretched
+      even more.
+- [x] Guard `updatePoseParts` against `0/0`. If both the old and new score
       are 0, the blend weights come out as `NaN` (`skeleton.js:536-537`).
+- [x] **Speed up skinning (found by profiling).** `updateSkeleton` took
+      about 27 ms per frame, twice as long as pose detection: the bones SVG
+      has 11,820 point-bone influences, each allocating paper.js Points.
+      Bones now cache their direction once per frame. Result: 1.9 ms, with
+      identical output.
+- [ ] **Live check:** run `yarn dev` and dance. Raise each arm and check
+      that left and right match.
 - [ ] **Benchmark on the show laptop** with 1, 2 and 4 people in frame. Write
       the fps for each in the Log.
 
@@ -251,3 +261,15 @@ Add a dated line for each decision, benchmark or finished phase.
   needs a live webcam check.
 - 2026-10-12: Phase 0 live check passed. **Baseline: about 19 fps** with
   PoseNet and face detection off.
+- 2026-10-12: Phase 1 code done. Headless Chrome with a test image as the
+  fake camera:
+
+  | | Detect | Skeleton update | Frame | FPS |
+  |---|---|---|---|---|
+  | Before (MediaPipe, old skinning) | 14 ms | 27 ms | 45 ms | about 22 |
+  | After (MediaPipe, cached bones) | 13 ms | 1.9 ms | 18 ms | about 55 |
+
+  Most of the fps gain comes from the skinning fix; MediaPipe's main
+  benefit is accuracy. PoseNet's detection time wasn't measured separately.
+  For Phase 3, the skeleton costs about 3 ms per person to update and draw,
+  and MediaPipe's landmark step also runs once per detected person.
