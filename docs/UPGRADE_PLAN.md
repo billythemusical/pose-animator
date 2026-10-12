@@ -12,7 +12,7 @@ a decision. Phases are in order; each one leaves the app working.
 |---|---|---|
 | 0 | Clean up the build and dependencies | ✅ Done |
 | 1 | Swap PoseNet for a modern pose model | ✅ Done (crowd benchmark still open) |
-| 2 | Show setup: projection, mirroring, framing | ◐ Controls done, camera framing still to do |
+| 2 | Show setup: projection, mirroring, framing | ◐ Code done, needs testing on the sheet |
 | 3 | Multiple bodies (same character) | ☐ Not started |
 | 4 | Multiple characters (stretch) | ☐ Not started |
 | 5 | Faces on (optional) | ☐ Not started |
@@ -141,9 +141,12 @@ drops below 24 fps, try MoveNet MultiPose before moving on.
 - [x] Canvas size controls, plus skeleton size, stretch and position controls,
       all saved between reloads. "Fill window" plus fullscreen (`F`) sizes
       the canvas to the projector.
-- [ ] Draw the canvas at the projector's resolution and at the camera's
-      aspect ratio, so the image is no longer stretched. Add a fullscreen key
-      (`f`).
+- [x] Use the camera's full width: it now asks for 640×360 (16:9) instead
+      of a 300×300 center crop. A Camera folder offers 640×480 and
+      1280×720, applied on reload. At size 1 the skeleton looks the same as
+      before; lower `size` to fit people standing at the sides.
+- [x] Skip the per-frame video copy unless face detection or the debug view
+      needs it.
 - [x] Background control (image or black). The default stays as the image
       for now. Make the background pure black (`#000`), not `background.png`. Black
       means no light on the sheet, so only the bones glow.
@@ -283,3 +286,6 @@ Add a dated line for each decision, benchmark or finished phase.
   window, fullscreen, background) and Skeleton (size, stretch, offsets,
   reset), saved in localStorage. Defaults match the old 800×1600 layout.
   With mirror on, the left/right slider still follows the laptop screen.
+- 2026-10-12: Camera now uses the full 16:9 view. Headless detect time per
+  frame: 300×300 13 ms, **640×360 13 ms (the new default)**, 640×480 16–17 ms,
+  1280×720 15 ms. Using the full width costs nothing.
