@@ -13,12 +13,14 @@ export const POSE_MODELS = {
 };
 
 export class PoseDetector {
-  static async create({model = 'lite', numPoses = 1} = {}) {
+  static async create({model = 'lite', numPoses = 1, minConfidence = 0.5} = {}) {
     const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
     const options = (delegate) => ({
       baseOptions: {modelAssetPath: POSE_MODELS[model], delegate},
       runningMode: 'VIDEO',
       numPoses,
+      minPoseDetectionConfidence: minConfidence,
+      minPosePresenceConfidence: minConfidence,
     });
     let landmarker;
     let delegate = 'GPU';
@@ -38,13 +40,17 @@ export class PoseDetector {
     this.lastTimestamp = -1;
   }
 
-  async setOptions({model, numPoses}) {
+  async setOptions({model, numPoses, minConfidence}) {
     const options = {};
     if (model) {
       options.baseOptions = {modelAssetPath: POSE_MODELS[model], delegate: this.delegate};
     }
     if (numPoses) {
       options.numPoses = numPoses;
+    }
+    if (minConfidence) {
+      options.minPoseDetectionConfidence = minConfidence;
+      options.minPosePresenceConfidence = minConfidence;
     }
     await this.landmarker.setOptions(options);
   }

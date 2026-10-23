@@ -156,7 +156,8 @@ export class PoseIllustration {
             } else if (SVGUtils.isPath(item)) {
                 this.bindPathToBones(item);
             } else if (SVGUtils.isShape(item)) {
-                this.bindPathToBones(item.toPath());
+                // toPath(false): don't insert the copy into the SVG, which other skeletons also bind.
+                this.bindPathToBones(item.toPath(false));
             }
         }
     }
@@ -176,7 +177,7 @@ export class PoseIllustration {
             } else if (SVGUtils.isPath(item)) {
                 paths.push(item);
             } else if (SVGUtils.isShape(item)) {
-                paths.push(item.toPath());
+                paths.push(item.toPath(false));
             }
         });
         let secondaryBones = [];

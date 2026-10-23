@@ -1,12 +1,21 @@
-// Projection settings: canvas size, mirroring, background, and where the
-// skeleton sits on the canvas. Saved to localStorage so a tuned setup
-// survives reloads.
+// Settings tuned from the control panel: pose detection, camera, canvas size,
+// mirroring, background, and where the skeleton sits on the canvas. Saved to
+// localStorage so a tuned setup survives reloads.
 
+// The key predates pose/camera settings; kept so saved setups still load.
 const STORAGE_KEY = 'pose-animator:projection';
 
 // These defaults reproduce the original layout: an 800x1600 canvas with the
 // (square) video stretched to fill it, 2x taller than wide.
 export const DEFAULTS = {
+  pose: {
+    model: 'lite',
+    // 1 = the original single-skeleton behavior; extra skeletons only exist
+    // when this is raised.
+    maxPeople: 1,
+    // Lower finds people more easily; raise to ignore passers-by.
+    minConfidence: 0.5,
+  },
   camera: {
     resolution: '640x360',
   },
@@ -29,9 +38,7 @@ export function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved) {
-      Object.assign(settings.camera, saved.camera);
-      Object.assign(settings.projection, saved.projection);
-      Object.assign(settings.skeleton, saved.skeleton);
+      Object.keys(DEFAULTS).forEach((section) => Object.assign(settings[section], saved[section]));
     }
   } catch (e) {
     // No storage (private window, blocked site data): use defaults.
@@ -41,11 +48,7 @@ export function loadSettings() {
 
 export function saveSettings(settings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      camera: settings.camera,
-      projection: settings.projection,
-      skeleton: settings.skeleton,
-    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch (e) {
     // Settings just won't persist.
   }

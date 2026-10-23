@@ -23,11 +23,12 @@ import Stats from 'stats.js';
 
 import {drawKeypoints, drawPoint, drawSkeleton, isMobile, toggleLoadingUI, setStatusText} from './utils/demoUtils';
 import {SVGUtils} from './utils/svgUtils'
-import {PoseIllustration} from './illustrationGen/illustration';
+import {Cast} from './illustrationGen/cast';
 import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
-import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './projection';
+import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './settings';
+import {PoseTracker} from './pose/tracker';
 
 import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
@@ -44,7 +45,9 @@ let videoHeight = 300;
 
 // Canvas
 let faceDetection = null;
-let illustration = null;
+// One skeleton per tracked person (up to settings.pose.maxPeople).
+let cast = null;
+let tracker = null;
 let canvasScope;
 let illustrationCanvas;
 // Canvas size, mirroring and skeleton placement; tuned from the GUI.
@@ -109,12 +112,7 @@ async function loadVideo() {
 
 const guiState = {
   avatarSVG: Object.keys(avatarSvgs)[0],
-  pose: {
-    model: 'lite',
-    // Only the first pose is drawn until multi-body support lands (Phase 3),
-    // but detecting more lets us benchmark the cost of a crowd.
-    maxPeople: 1,
-  },
+  pose: settings.pose,
   projection: settings.projection,
   skeleton: settings.skeleton,
   debug: {
@@ -141,10 +139,25 @@ function setupGui(cameras) {
   multi.open();
 
   let pose = gui.addFolder('Pose detection');
-  pose.add(guiState.pose, 'model', ['lite', 'full'])
-      .onChange((model) => poseDetector.setOptions({model}));
-  pose.add(guiState.pose, 'maxPeople', 1, 6, 1)
-      .onChange((numPoses) => poseDetector.setOptions({numPoses}));
+  pose.add(settings.pose, 'model', ['lite', 'full'])
+      .onChange((model) => {
+        poseDetector.setOptions({model});
+        saveSettings(settings);
+      });
+  // Set to 1 for the original single-skeleton show. Extra skeletons are only
+  // built, detected and drawn when this is raised.
+  pose.add(settings.pose, 'maxPeople', 1, 6, 1)
+      .onChange((maxPeople) => {
+        poseDetector.setOptions({numPoses: maxPeople});
+        cast.resize(maxPeople);
+        saveSettings(settings);
+      });
+  pose.add(settings.pose, 'minConfidence', 0.1, 0.9, 0.05)
+      .name('min confidence')
+      .onChange((minConfidence) => {
+        poseDetector.setOptions({minConfidence});
+        saveSettings(settings);
+      });
   pose.open();
 
   // Everything in these two folders is saved, so a tuned projection setup
@@ -225,6 +238,10 @@ function detectPoseInRealTime(video) {
   keypointCanvas.width = videoWidth;
   keypointCanvas.height = videoHeight;
 
+  // A torso can move a quarter of the frame width between frames and still
+  // count as the same person.
+  tracker = new PoseTracker({maxDistance: videoWidth * 0.25});
+
   async function poseDetectionFrame() {
     // Begin monitoring code for frames per second
     stats.begin();
@@ -246,15 +263,25 @@ function detectPoseInRealTime(video) {
       const input = tf.browser.fromPixels(canvas);
       faceDetection = await facemesh.estimateFaces(input, false, false);
       input.dispose();
+    } else {
+      faceDetection = null;
     }
+    const __t0 = performance.now();
     const poses = poseDetector.detect(video, videoWidth, videoHeight);
+    const __t1 = performance.now();
+    // Swap left/right part names to match the mirrored display. Done once per
+    // detection, here: the tracker can return the same pose object on later
+    // frames, and flipping twice would undo it.
+    poses.forEach((pose) => Skeleton.flipPose(pose));
+    const tracked = tracker.update(poses);
 
     keypointCtx.clearRect(0, 0, videoWidth, videoHeight);
     if (guiState.debug.showDetectionDebug) {
-      poses.forEach(({score, keypoints}) => {
-      if (score >= minPoseConfidence) {
-          drawKeypoints(keypoints, minPartConfidence, keypointCtx);
-          drawSkeleton(keypoints, minPartConfidence, keypointCtx);
+      tracked.forEach(({id, pose, missed}) => {
+        if (missed === 0 && pose.score >= minPoseConfidence) {
+          const color = trackColor(id);
+          drawKeypoints(pose.keypoints, minPartConfidence, keypointCtx, 1, color);
+          drawSkeleton(pose.keypoints, minPartConfidence, keypointCtx, 1, color);
         }
       });
       if(guiState.debug.detectFaces) {
@@ -269,20 +296,18 @@ function detectPoseInRealTime(video) {
 
     canvasScope.project.clear();
 
-    if (poses.length >= 1 && illustration) {
-      Skeleton.flipPose(poses[0]);
-
-      if (faceDetection && faceDetection.length > 0) {
-        let face = Skeleton.toFaceFrame(faceDetection[0]);
-        illustration.updateSkeleton(poses[0], face);
-      } else {
-        illustration.updateSkeleton(poses[0], null);
-      }
-      illustration.draw(canvasScope, videoWidth, videoHeight);
-
-      if (guiState.debug.showIllustrationDebug) {
-        illustration.debugDraw(canvasScope);
-      }
+    const face = faceDetection && faceDetection.length > 0 ?
+        Skeleton.toFaceFrame(faceDetection[0]) : null;
+    cast.update(tracked, face);
+    cast.draw(guiState.debug.showIllustrationDebug);
+    const __t2 = performance.now();
+    const W = window; W.__a = W.__a || {d: 0, u: 0, n: 0, p: 0, s: 0, ids: new Set(), start: performance.now()};
+    W.__a.d += __t1 - __t0; W.__a.u += __t2 - __t1; W.__a.n++; W.__a.p += poses.length; W.__a.s += cast.byTrackId.size;
+    tracked.forEach((t) => W.__a.ids.add(t.id));
+    if (W.__a.n === 90) {
+      const a = W.__a;
+      console.log(`DBG detect ${(a.d / 90).toFixed(1)}ms  skeletons ${(a.u / 90).toFixed(1)}ms  fps ${(90000 / (performance.now() - a.start)).toFixed(1)}  poses/frame ${(a.p / 90).toFixed(2)}  drawn/frame ${(a.s / 90).toFixed(2)}  ids so far ${[...a.ids].join(',')}`);
+      W.__a = {d: 0, u: 0, n: 0, p: 0, s: 0, ids: a.ids, start: performance.now()};
     }
 
     canvasScope.project.activeLayer.transform(
@@ -295,6 +320,12 @@ function detectPoseInRealTime(video) {
   }
 
   poseDetectionFrame();
+}
+
+const TRACK_COLORS = ['aqua', 'yellow', 'magenta', 'lime', 'orange', 'white'];
+
+function trackColor(id) {
+  return TRACK_COLORS[id % TRACK_COLORS.length];
 }
 
 function setupCanvas() {
@@ -354,8 +385,9 @@ export async function bindPage() {
   toggleLoadingUI(true);
   setStatusText('Loading pose model...');
   poseDetector = await PoseDetector.create({
-    model: guiState.pose.model,
-    numPoses: guiState.pose.maxPeople,
+    model: settings.pose.model,
+    numPoses: settings.pose.maxPeople,
+    minConfidence: settings.pose.minConfidence,
   });
   setStatusText('Loading FaceMesh model...');
   facemesh = await facemesh_module.load();
@@ -388,9 +420,12 @@ FileUtils.setDragDropHandler((result) => {parseSVG(result)});
 
 async function parseSVG(target) {
   let svgScope = await SVGUtils.importSVG(target /* SVG string or file path */);
-  let skeleton = new Skeleton(svgScope);
-  illustration = new PoseIllustration(canvasScope);
-  illustration.bindSkeleton(skeleton, svgScope);
+  if (!cast) {
+    cast = new Cast(canvasScope);
+  }
+  const __b = performance.now();
+  cast.setCharacter(svgScope, settings.pose.maxPeople);
+  console.log(`DBG built ${settings.pose.maxPeople} skeleton(s) in ${(performance.now() - __b).toFixed(0)}ms`);
 }
     
 bindPage();

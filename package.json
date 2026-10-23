@@ -5,6 +5,7 @@
   "main": "index.js",
   "license": "Apache-2.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=20"
   },
@@ -25,7 +26,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "link-local": "yalc link"
+    "link-local": "yalc link",
+    "test": "node --test test/"
   },
   "devDependencies": {
     "clang-format": "~1.2.2",

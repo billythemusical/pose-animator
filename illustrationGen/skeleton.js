@@ -687,8 +687,12 @@ export class Skeleton {
         });
     }
 
+    // Forgets all per-person state, so the skeleton can be handed to someone new.
     reset() {
-        this.parts = [];
+        this.parts = {};
+        this.leftEarP2FFunc = null;
+        this.rightEarP2FFunc = null;
+        this.isValid = false;
     }
 
     static getCurrentPosition(segment) {
