@@ -383,3 +383,9 @@ Add a dated line for each decision, benchmark or finished phase.
   (every frame) and `off` (sends nothing and the panel closes its camera).
   The show comes first. Measured over the bridge: off 0/s, light 8.6/s,
   live 29/s. The fps effect on the real laptop hasn't been measured.
+- 2026-10-24: "Let's dance" idle sign added (shows 1.5 s after the last body
+  leaves, fades out when someone appears, flips with the mirror setting).
+  The original `lets-dance-crop.png` has an opaque white background baked
+  in, so `lets-dance-alpha.png` is a copy with the background transparent
+  and the lettering inverted to white, for the black sheet. The original is
+  kept.

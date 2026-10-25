@@ -31,7 +31,7 @@ import {buildControls} from './controls';
 import {connectBridge} from './sync/bridgeClient';
 import {applyRemoteSettings} from './sync/settingsSync';
 
-import idlePromptUrl from './resources/images/lets-dance-crop.png';
+import idlePromptUrl from './resources/images/lets-dance-alpha.png';
 import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
 // import * as boySVG from './resources/illustration/boy.svg';
