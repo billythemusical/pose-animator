@@ -389,3 +389,7 @@ Add a dated line for each decision, benchmark or finished phase.
   in, so `lets-dance-alpha.png` is a copy with the background transparent
   and the lettering inverted to white, for the black sheet. The original is
   kept.
+- 2026-10-24: Idle sign now says "COME DANCE!" (`come-dance-alpha.png`). The
+  skulls are the originals; the lettering is redrawn in Bangers
+  (`resources/fonts/Bangers-Regular.ttf`, SIL Open Font License), which is a
+  close but not exact match for the old lettering.
