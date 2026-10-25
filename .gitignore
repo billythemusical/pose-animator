@@ -77,5 +77,4 @@ node_modules/
 public/mediapipe/
 
 # Third-party test video; kept local because the repo is public
-test/fixtures/four-dancers.mp4
-test/fixtures/pretty-girls-walk.mp4
+test/fixtures/*.mp4

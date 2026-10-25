@@ -13,11 +13,20 @@ a decision. Phases are in order; each one leaves the app working.
 Waypoint: tag `halloween-waypoint-1` (2026-10-24) is a known-working
 state. Go back to it any time with `git checkout halloween-waypoint-1`.
 
-- [ ] **Pop-out control panel.** Move the controls into a separate browser
-      window that can be dragged to another screen, so the projector shows
-      only the canvas while the controls stay on the laptop. The panel and
-      the canvas window have to share settings live (the existing
-      localStorage settings, or a `BroadcastChannel`).
+- [x] **Separate control panel window** (code done; needs a try from a
+      second machine). Open `/panel.html` in any browser that can reach the
+      laptop. It shows the same controls as the main page, and changes go
+      over a WebSocket bridge at `/bridge`, built into the Vite dev and
+      preview servers (`sync/bridgePlugin.mjs`), so there's nothing extra to
+      start. The main page stays the source of truth and its own controls
+      keep working and following whether the panel is open or not. The bridge
+      has no password, so use it on a network you trust.
+- [x] **Backgrounds.** Drop png/jpg/webp files in `resources/backgrounds/`
+      and they appear in the background list, with a fit setting (cover,
+      stretch, tile) so images no longer tile by default.
+- [x] **`yarn watch`**: dev server on the network with hot reload and no
+      browser auto-open. `yarn show` builds and serves `dist/` the same way.
+
 - [x] **Multi-body test mode** (code done, needs a look on the real setup).
       A "Test mode" folder in the controls plays a recorded clip in place of
       the camera: "play a video file..." opens a file picker, and "use
@@ -333,3 +342,10 @@ Add a dated line for each decision, benchmark or finished phase.
   detect and 2 ms skeleton per frame, 27-31 fps (headless, software
   rendering and a large video frame, so it says little about the show
   laptop). The file-picker button wasn't exercised headlessly.
+- 2026-10-24: Control panel window, bridge, background list and `yarn
+  watch` added. Headless test with a fake panel over the bridge: changed
+  `maxPeople` to 4 and started the clip remotely, status came back. The
+  clip is 3840x2160 and mostly wide shots: 1-2 poses per frame, 15-28 fps
+  in headless Chrome, and track IDs ran past 28 in 30 s (people lost and
+  re-found), so it is a rough load test and a hint that tracking needs
+  looking at for small or distant bodies.

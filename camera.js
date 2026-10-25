@@ -18,7 +18,6 @@
 import * as facemesh_module from '@tensorflow-models/facemesh';
 import * as tf from '@tensorflow/tfjs';
 import * as paper from 'paper';
-import dat from 'dat.gui';
 import Stats from 'stats.js';
 
 import {drawKeypoints, drawPoint, drawSkeleton, isMobile, toggleLoadingUI, setStatusText} from './utils/demoUtils';
@@ -29,6 +28,9 @@ import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
 import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './settings';
 import {PoseTracker} from './pose/tracker';
+import {buildControls} from './controls';
+import {connectBridge} from './sync/bridgeClient';
+import {applyRemoteSettings} from './sync/settingsSync';
 
 import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
@@ -139,23 +141,35 @@ async function loadVideo() {
       await setupVideoFile(testVideoUrl) : await setupCamera();
   video.play();
   if (testVideoUrl) {
-    sourceState.source = 'video: ' + testVideoUrl.split('/').pop();
+    status.source = 'video: ' + testVideoUrl.split('/').pop();
   }
+  status.cameraGives = `${videoWidth}x${videoHeight}`;
 
   return video;
 }
 
-// Which input feeds the detector. Test mode swaps a recorded clip in for the
-// camera; neither choice is saved, so a reload goes back to the camera.
-const sourceState = {source: 'camera'};
+// Read-only values the controls display (also sent to the panel window).
+const status = {source: 'camera', cameraGives: '-', fps: '-', people: '-'};
 // Set when the source (and so the video size) changes, so the frame loop
 // resizes its canvases and starts tracking fresh.
 let sourceChanged = false;
 
+// Test mode swaps a recorded clip in for the camera. Neither choice is saved,
+// so a reload goes back to the camera.
 async function switchSource(setup, label) {
-  await setup();
+  try {
+    await setup();
+  } catch (e) {
+    console.warn(e);
+    if (label !== 'camera') {
+      await switchSource(setupCamera, 'camera');
+      status.source = 'camera (could not load that video)';
+    }
+    return;
+  }
   video.play();
-  sourceState.source = label;
+  status.source = label;
+  status.cameraGives = `${videoWidth}x${videoHeight}`;
   sourceChanged = true;
 }
 
@@ -172,114 +186,100 @@ function chooseVideoFile() {
   input.click();
 }
 
-const guiState = {
-  avatarSVG: Object.keys(avatarSvgs)[0],
-  pose: settings.pose,
-  projection: settings.projection,
-  skeleton: settings.skeleton,
-  debug: {
-    detectFaces: false,
-    showDetectionDebug: false,
-    showIllustrationDebug: false,
-  },
-};
+let controls;
+let bridge;
 
-/**
- * Sets up dat.gui controller on the top-right of the window
- */
-function setupGui(cameras) {
-
-  if (cameras.length > 0) {
-    guiState.camera = cameras[0].deviceId;
-  }
-
-  const gui = new dat.GUI({width: 300});
-  gui.closed = true;
-
-  let multi = gui.addFolder('Image');
-  multi.add(guiState, 'avatarSVG', Object.keys(avatarSvgs)).onChange(() => parseSVG(avatarSvgs[guiState.avatarSVG]));
-  multi.open();
-
-  let pose = gui.addFolder('Pose detection');
-  pose.add(settings.pose, 'model', ['lite', 'full'])
-      .onChange((model) => {
-        poseDetector.setOptions({model});
-        saveSettings(settings);
-      });
-  // Set to 1 for the original single-skeleton show. Extra skeletons are only
-  // built, detected and drawn when this is raised.
-  pose.add(settings.pose, 'maxPeople', 1, 6, 1)
-      .onChange((maxPeople) => {
-        poseDetector.setOptions({numPoses: maxPeople});
-        cast.resize(maxPeople);
-        saveSettings(settings);
-      });
-  pose.add(settings.pose, 'minConfidence', 0.1, 0.9, 0.05)
-      .name('min confidence')
-      .onChange((minConfidence) => {
-        poseDetector.setOptions({minConfidence});
-        saveSettings(settings);
-      });
-  pose.open();
-
-  // Everything in these two folders is saved, so a tuned projection setup
-  // survives reloads.
-  const onProjectionChange = () => {
+/** Reacts to one setting having a new value, wherever the change came from. */
+function applySetting(section, key) {
+  const value = settings[section][key];
+  if (section === 'pose') {
+    if (key === 'model') poseDetector.setOptions({model: value});
+    if (key === 'maxPeople') {
+      poseDetector.setOptions({numPoses: value});
+      cast.resize(value);
+    }
+    if (key === 'minConfidence') poseDetector.setOptions({minConfidence: value});
+  } else if (section === 'projection') {
     applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
-    saveSettings(settings);
-  };
-  let projection = gui.addFolder('Projection');
-  projection.add(settings.projection, 'mirror').onChange(onProjectionChange);
-  projection.add(settings.projection, 'canvasWidth', 200, 3840, 10).onChange(onProjectionChange);
-  projection.add(settings.projection, 'canvasHeight', 200, 3840, 10).onChange(onProjectionChange);
-  projection.add(settings.projection, 'background', ['image', 'black']).onChange(onProjectionChange);
-  projection.add({fillWindow}, 'fillWindow').name('fill window');
-  projection.add({toggleFullscreen}, 'toggleFullscreen').name('fullscreen (F)');
-  projection.open();
+  } else if (section === 'camera') {
+    // The camera stream has to restart.
+    location.reload();
+  } else if (section === 'debug' && key === 'showDetectionDebug') {
+    hideShowCamera();
+  }
+}
 
-  let skeleton = gui.addFolder('Skeleton');
-  skeleton.add(settings.skeleton, 'size', 0.2, 4, 0.01).onChange(() => saveSettings(settings));
-  skeleton.add(settings.skeleton, 'stretch', 0.5, 4, 0.01).onChange(() => saveSettings(settings));
-  skeleton.add(settings.skeleton, 'offsetX', -100, 100, 0.5).name('left / right').onChange(() => saveSettings(settings));
-  skeleton.add(settings.skeleton, 'offsetY', -100, 100, 0.5).name('up / down').onChange(() => saveSettings(settings));
-  skeleton.add({resetLayout: () => {
+function sendSettings() {
+  bridge.send({type: 'settings', settings});
+}
+
+/** A control on this page changed. */
+function onSettingChange(section, key) {
+  saveSettings(settings);
+  applySetting(section, key);
+  sendSettings();
+}
+
+/** Something on this page changed several settings at once. */
+function onSettingsReplaced(sections) {
+  sections.forEach((section) => Object.keys(settings[section]).forEach((key) => applySetting(section, key)));
+  saveSettings(settings);
+  controls.refresh();
+  sendSettings();
+}
+
+function runAction(name, value) {
+  if (name === 'fillWindow') fillWindow();
+  if (name === 'toggleFullscreen') toggleFullscreen();
+  if (name === 'chooseVideoFile') chooseVideoFile();
+  if (name === 'useCamera') switchSource(setupCamera, 'camera');
+  if (name === 'playVideoUrl') switchSource(() => setupVideoFile(value), 'video: ' + value.split('/').pop());
+  if (name === 'resetLayout') {
     Object.assign(settings.projection, DEFAULTS.projection);
     Object.assign(settings.skeleton, DEFAULTS.skeleton);
-    onProjectionChange();
-    gui.__folders['Projection'].__controllers.forEach((c) => c.updateDisplay());
-    gui.__folders['Skeleton'].__controllers.forEach((c) => c.updateDisplay());
-  }}, 'resetLayout').name('reset layout');
-  skeleton.open();
+    onSettingsReplaced(['projection', 'skeleton']);
+  }
+}
 
-  // Keep the controls in sync when "fill window" changes the size.
-  fillWindowListeners.push(() => {
-    gui.__folders['Projection'].__controllers.forEach((c) => c.updateDisplay());
-    onProjectionChange();
+/** A message from the control panel window. */
+function onBridgeMessage(message) {
+  if (message.type === 'settings') {
+    const changed = applyRemoteSettings(settings, message.settings);
+    saveSettings(settings);
+    changed.forEach(([section, key]) => applySetting(section, key));
+    controls.refresh();
+  } else if (message.type === 'action') {
+    runAction(message.name, message.value);
+  }
+}
+
+/**
+ * Sets up the dat.gui controls on the top-right of the window, and connects
+ * to the bridge so a separate panel window can drive the same controls.
+ */
+function setupGui() {
+  controls = buildControls(settings, status, {
+    onChange: onSettingChange,
+    onAction: runAction,
   });
 
-  // Takes effect on reload, since the camera stream has to restart.
-  let camera = gui.addFolder('Camera');
-  camera.add(settings.camera, 'resolution', ['640x360', '640x480', '1280x720'])
-      .name('resolution (reloads)')
-      .onChange(() => {
-        saveSettings(settings);
-        location.reload();
-      });
-  camera.add({actual: `${videoWidth}x${videoHeight}`}, 'actual').name('camera gives');
+  const image = controls.gui.addFolder('Image');
+  image.add({avatarSVG: Object.keys(avatarSvgs)[0]}, 'avatarSVG', Object.keys(avatarSvgs))
+      .onChange((name) => parseSVG(avatarSvgs[name]));
+  image.open();
 
-  // Test mode: play a recorded clip instead of the live camera.
-  let source = gui.addFolder('Test mode');
-  const sourceLabel = source.add(sourceState, 'source').listen();
-  sourceLabel.domElement.querySelector('input').readOnly = true;
-  source.add({chooseVideoFile}, 'chooseVideoFile').name('play a video file...');
-  source.add({useCamera: () => switchSource(setupCamera, 'camera')}, 'useCamera').name('use camera');
-  source.open();
-
-  let output = gui.addFolder('Debug control');
-  output.add(guiState.debug, 'detectFaces');
-  output.add(guiState.debug, 'showDetectionDebug').onChange(hideShowCamera);
-  output.add(guiState.debug, 'showIllustrationDebug');
-  output.open();
+  bridge = connectBridge('main', onBridgeMessage, (connected) => {
+    // This page is the source of truth: a panel that connects gets our state.
+    if (connected) sendSettings();
+  });
+  setInterval(() => {
+    bridge.send({type: 'status', status: {
+      source: status.source,
+      cameraGives: status.cameraGives,
+      fps: status.fps,
+      people: status.people,
+    }});
+  }, 500);
 
   // initially hide the camera
   hideShowCamera();
@@ -317,6 +317,9 @@ function detectPoseInRealTime(video) {
   }
   applyVideoSize();
 
+  let frames = 0;
+  let fpsStart = performance.now();
+
   async function poseDetectionFrame() {
     // Nothing to detect until the source has delivered a frame.
     if (video.readyState < 2) {
@@ -334,7 +337,7 @@ function detectPoseInRealTime(video) {
    
     // The mirrored video copy is only needed as facemesh input or to show
     // the debug camera view, so skip it otherwise.
-    if (guiState.debug.detectFaces || guiState.debug.showDetectionDebug) {
+    if (settings.debug.detectFaces || settings.debug.showDetectionDebug) {
       videoCtx.clearRect(0, 0, videoWidth, videoHeight);
       videoCtx.save();
       videoCtx.scale(-1, 1);
@@ -343,7 +346,7 @@ function detectPoseInRealTime(video) {
       videoCtx.restore();
     }
 
-    if (guiState.debug.detectFaces) {
+    if (settings.debug.detectFaces) {
       // Only build the tensor when facemesh needs it.
       const input = tf.browser.fromPixels(canvas);
       faceDetection = await facemesh.estimateFaces(input, false, false);
@@ -361,7 +364,7 @@ function detectPoseInRealTime(video) {
     const tracked = tracker.update(poses);
 
     keypointCtx.clearRect(0, 0, videoWidth, videoHeight);
-    if (guiState.debug.showDetectionDebug) {
+    if (settings.debug.showDetectionDebug) {
       tracked.forEach(({id, pose, missed}) => {
         if (missed === 0 && pose.score >= minPoseConfidence) {
           const color = trackColor(id);
@@ -369,7 +372,7 @@ function detectPoseInRealTime(video) {
           drawSkeleton(pose.keypoints, minPartConfidence, keypointCtx, 1, color);
         }
       });
-      if(guiState.debug.detectFaces) {
+      if(settings.debug.detectFaces) {
         faceDetection.forEach(face => {
           Object.values(facePartName2Index).forEach(index => {
               let p = face.scaledMesh[index];
@@ -384,7 +387,7 @@ function detectPoseInRealTime(video) {
     const face = faceDetection && faceDetection.length > 0 ?
         Skeleton.toFaceFrame(faceDetection[0]) : null;
     cast.update(tracked, face);
-    cast.draw(guiState.debug.showIllustrationDebug);
+    cast.draw(settings.debug.showIllustrationDebug);
     const __t2 = performance.now();
     const W = window; W.__a = W.__a || {d: 0, u: 0, n: 0, p: 0, s: 0, ids: new Set(), start: performance.now()};
     W.__a.d += __t1 - __t0; W.__a.u += __t2 - __t1; W.__a.n++; W.__a.p += poses.length; W.__a.s += cast.byTrackId.size;
@@ -400,6 +403,15 @@ function detectPoseInRealTime(video) {
 
     // End monitoring code for frames per second
     stats.end();
+
+    frames++;
+    const now = performance.now();
+    if (now - fpsStart >= 500) {
+      status.fps = String(Math.round((frames * 1000) / (now - fpsStart)));
+      status.people = String(cast.byTrackId.size);
+      frames = 0;
+      fpsStart = now;
+    }
 
     requestAnimationFrame(poseDetectionFrame);
   }
@@ -422,13 +434,11 @@ function setupCanvas() {
   applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
 }
 
-const fillWindowListeners = [];
-
 // Sizes the canvas to the window: in fullscreen, that's the projector.
 function fillWindow() {
   settings.projection.canvasWidth = window.innerWidth;
   settings.projection.canvasHeight = window.innerHeight;
-  fillWindowListeners.forEach((listener) => listener());
+  onSettingsReplaced(['projection']);
 }
 
 function toggleFullscreen() {
@@ -452,7 +462,7 @@ const output = document.getElementById('output')
 
 function hideShowCamera() {
   console.log('running hideSHowCamera')
-  if(guiState.debug.showDetectionDebug == false) {
+  if(settings.debug.showDetectionDebug == false) {
     output.style.display = "none"
   } else {
     output.style.display = "block"
@@ -492,7 +502,7 @@ export async function bindPage() {
     throw e;
   }
 
-  setupGui([]);
+  setupGui();
   setupFPS();
   
   toggleLoadingUI(false);

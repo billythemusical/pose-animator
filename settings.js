@@ -1,3 +1,5 @@
+import {backgroundUrl} from './backgrounds';
+
 // Settings tuned from the control panel: pose detection, camera, canvas size,
 // mirroring, background, and where the skeleton sits on the canvas. Saved to
 // localStorage so a tuned setup survives reloads.
@@ -23,13 +25,22 @@ export const DEFAULTS = {
     mirror: false,
     canvasWidth: 800,
     canvasHeight: 1600,
-    background: 'image',
+    // A file name from resources/backgrounds/, or 'black'.
+    background: 'background.png',
+    // How an image fills the canvas: cover, stretch or tile.
+    backgroundFit: 'cover',
   },
   skeleton: {
     size: 1,
     stretch: 2,
     offsetX: 0,
     offsetY: 0,
+  },
+  // Not saved: these always start off.
+  debug: {
+    detectFaces: false,
+    showDetectionDebug: false,
+    showIllustrationDebug: false,
   },
 };
 
@@ -39,7 +50,12 @@ export function loadSettings() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved) {
       Object.keys(DEFAULTS).forEach((section) => Object.assign(settings[section], saved[section]));
+      // Saved before backgrounds were a list: 'image' meant the one image.
+      if (settings.projection.background === 'image') {
+        settings.projection.background = DEFAULTS.projection.background;
+      }
     }
+    settings.debug = {...DEFAULTS.debug};
   } catch (e) {
     // No storage (private window, blocked site data): use defaults.
   }
@@ -48,7 +64,8 @@ export function loadSettings() {
 
 export function saveSettings(settings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    const {debug, ...saved} = settings;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   } catch (e) {
     // Settings just won't persist.
   }
@@ -60,7 +77,13 @@ export function applyCanvasSettings(canvasScope, canvas, projection) {
       new canvasScope.Size(projection.canvasWidth, projection.canvasHeight);
   // Mirroring is display-only, for rear projection through a sheet.
   canvas.style.transform = projection.mirror ? 'scaleX(-1)' : '';
-  canvas.classList.toggle('no-background', projection.background === 'black');
+  const url = backgroundUrl(projection.background);
+  canvas.style.backgroundImage = url ? `url('${url}')` : 'none';
+  canvas.style.backgroundColor = 'black';
+  const fit = projection.backgroundFit;
+  canvas.style.backgroundSize = fit === 'cover' ? 'cover' : fit === 'stretch' ? '100% 100%' : 'auto';
+  canvas.style.backgroundRepeat = fit === 'tile' ? 'repeat' : 'no-repeat';
+  canvas.style.backgroundPosition = 'center';
 }
 
 /**
