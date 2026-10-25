@@ -8,6 +8,23 @@ per trick-or-treater, running smoothly on the show laptop.
 written. Add a dated line to the [Log](#log) when you finish a phase or make
 a decision. Phases are in order; each one leaves the app working.
 
+## Next up (top of the list)
+
+Waypoint: tag `halloween-waypoint-1` (2026-10-24) is a known-working
+state. Go back to it any time with `git checkout halloween-waypoint-1`.
+
+- [ ] **Pop-out control panel.** Move the controls into a separate browser
+      window that can be dragged to another screen, so the projector shows
+      only the canvas while the controls stay on the laptop. The panel and
+      the canvas window have to share settings live (the existing
+      localStorage settings, or a `BroadcastChannel`).
+- [ ] **Multi-body test mode.** A toggle that feeds a recorded multi-person
+      clip (the four-dancers clip in the test fixtures folder, which is
+      kept out of git, or a replacement video) into the detector instead of
+      the camera, so framing and tracking can be tested with up to three
+      bodies without a live crowd. Also useful for framing people while
+      they dance.
+
 | Phase | What | Status |
 |---|---|---|
 | 0 | Clean up the build and dependencies | ✅ Done |
@@ -289,3 +306,6 @@ Add a dated line for each decision, benchmark or finished phase.
 - 2026-10-12: Camera now uses the full 16:9 view. Headless detect time per
   frame: 300×300 13 ms, **640×360 13 ms (the new default)**, 640×480 16–17 ms,
   1280×720 15 ms. Using the full width costs nothing.
+- 2026-10-24: Halloween branch confirmed working; tagged
+  `halloween-waypoint-1` as a safe point to return to. Added the pop-out
+  control panel and the multi-body test mode to the top of the roadmap.
