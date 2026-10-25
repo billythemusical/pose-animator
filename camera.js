@@ -26,6 +26,7 @@ import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
 import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './settings';
 import {PoseTracker} from './pose/tracker';
+import {trackColor} from './pose/trackColor';
 import {buildControls} from './controls';
 import {connectBridge} from './sync/bridgeClient';
 import {applyRemoteSettings} from './sync/settingsSync';
@@ -252,6 +253,8 @@ function onBridgeMessage(message) {
   } else if (message.type === 'peers') {
     panelConnected = message.panel;
     applyPanelPresence();
+  } else if (message.type === 'wantFrames') {
+    panelWantsFrames = message.on;
   }
 }
 
@@ -260,6 +263,9 @@ function onBridgeMessage(message) {
 // panel closes they come back. Uses `visibility` because dat.gui's H key
 // already toggles `display`.
 let panelConnected = false;
+// The panel draws the camera view itself when it can open the camera. It asks
+// for JPEG frames only when it can't (a test clip, or a phone).
+let panelWantsFrames = false;
 function applyPanelPresence() {
   const visibility = panelConnected ? 'hidden' : '';
   controls.gui.domElement.style.visibility = visibility;
@@ -346,7 +352,8 @@ function detectPoseInRealTime(video) {
     // The camera view with the detected points goes to the panel window
     // whenever one is open, never to the projector.
     if (panelConnected) {
-      sendDebugFrame(video, tracked);
+      sendPoses(tracked);
+      if (panelWantsFrames) sendDebugFrame(video, tracked);
     }
 
     canvasScope.project.clear();
@@ -383,6 +390,14 @@ function detectPoseInRealTime(video) {
   }
 
   poseDetectionFrame();
+}
+
+/** Sends the tracked people's points; the panel draws them over its own camera view. */
+function sendPoses(tracked) {
+  const poses = tracked
+      .filter(({pose, missed}) => missed === 0 && pose.score >= minPoseConfidence)
+      .map(({id, pose}) => ({id, keypoints: pose.keypoints}));
+  bridge.send({type: 'poses', width: videoWidth, height: videoHeight, poses});
 }
 
 const DEBUG_VIEW_WIDTH = 480;
@@ -424,12 +439,6 @@ function sendDebugFrame(video, tracked) {
     debugFrameEncoding = false;
     if (blob) bridge.sendBinary(await blob.arrayBuffer());
   }, 'image/jpeg', 0.6);
-}
-
-const TRACK_COLORS = ['aqua', 'yellow', 'magenta', 'lime', 'orange', 'white'];
-
-function trackColor(id) {
-  return TRACK_COLORS[id % TRACK_COLORS.length];
 }
 
 function setupCanvas() {

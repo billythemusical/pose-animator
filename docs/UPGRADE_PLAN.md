@@ -369,3 +369,12 @@ Add a dated line for each decision, benchmark or finished phase.
   them on a phone). While a panel is connected, the show page hides its own
   controls and fps meter; they come back if the panel closes. The old
   "showDetectionDebug" toggle is gone.
+- 2026-10-24: Panel camera view was laggy (JPEG frames over the bridge, only
+  about 1 frame a second in the headless test). Now, when the show is on the
+  live camera, the panel opens the camera itself and the show page sends only
+  the tracked points (about 2 KB, around 30 times a second). JPEG frames are
+  still the fallback for recorded test clips and for phones (browsers refuse
+  the camera over plain http), and newer frames now replace unfinished ones
+  instead of queuing. Headless test: the panel's own camera drew at 640x360.
+  Not yet checked: one real webcam shared between the show page and the
+  panel on this Mac.

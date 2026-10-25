@@ -6,15 +6,14 @@ import {DEFAULTS} from './settings';
 import {buildControls} from './controls';
 import {connectBridge} from './sync/bridgeClient';
 import {applyRemoteSettings} from './sync/settingsSync';
+import {PanelView} from './panelView';
 
 const settings = JSON.parse(JSON.stringify(DEFAULTS));
 const status = {source: '-', cameraGives: '-', fps: '-', people: '-', mainWindow: 'not connected'};
 const banner = document.getElementById('banner');
 
-// The show page's camera view with the detected points.
-const view = document.getElementById('view');
-const viewCtx = view.getContext('2d');
 let controls = null;
+let view = null;
 let bridge = null;
 const send = () => bridge.send({type: 'settings', settings});
 
@@ -28,6 +27,10 @@ function setConnected(serverUp, mainUp) {
 async function start() {
   // The clips in test/fixtures, for the test mode dropdown.
   const videos = await fetch('/api/videos').then((r) => r.json()).catch(() => []);
+
+  view = new PanelView(
+      document.getElementById('view'),
+      (on) => bridge && bridge.send({type: 'wantFrames', on}));
 
   controls = buildControls(settings, status, {
     isPanel: true,
@@ -43,20 +46,19 @@ async function start() {
       controls.refresh();
     } else if (message.type === 'status') {
       Object.assign(status, message.status);
+      view.setSource(status.source);
       controls.refresh();
+    } else if (message.type === 'poses') {
+      view.setPoses(message);
     } else if (message.type === 'peers') {
       setConnected(true, message.main);
+      // A show page that just (re)connected needs to hear what we want.
+      view.reportWantFrames(true);
       controls.refresh();
     }
   }, (connected) => {
     if (!connected) setConnected(false, false);
-  }, async (frame) => {
-    const bitmap = await createImageBitmap(new Blob([frame], {type: 'image/jpeg'}));
-    view.width = bitmap.width;
-    view.height = bitmap.height;
-    viewCtx.drawImage(bitmap, 0, 0);
-    bitmap.close();
-  });
+  }, (frame) => view.setFrame(frame));
 }
 
 start();
