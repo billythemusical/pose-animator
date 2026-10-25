@@ -15,15 +15,13 @@
  * =============================================================================
  */
 
-import * as facemesh_module from '@tensorflow-models/facemesh';
-import * as tf from '@tensorflow/tfjs';
 import * as paper from 'paper';
 import Stats from 'stats.js';
 
-import {drawKeypoints, drawPoint, drawSkeleton, isMobile, toggleLoadingUI, setStatusText} from './utils/demoUtils';
+import {drawKeypoints, drawSkeleton, isMobile, toggleLoadingUI, setStatusText} from './utils/demoUtils';
 import {SVGUtils} from './utils/svgUtils'
 import {Cast} from './illustrationGen/cast';
-import {Skeleton, facePartName2Index} from './illustrationGen/skeleton';
+import {Skeleton} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
 import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './settings';
@@ -46,7 +44,6 @@ let videoWidth = 300;
 let videoHeight = 300;
 
 // Canvas
-let faceDetection = null;
 // One skeleton per tracked person (up to settings.pose.maxPeople).
 let cast = null;
 let tracker = null;
@@ -56,7 +53,6 @@ let illustrationCanvas;
 const settings = loadSettings();
 
 // ML models
-let facemesh;
 let poseDetector;
 let minPoseConfidence = 0.15;
 let minPartConfidence = 0.1;
@@ -340,9 +336,8 @@ function detectPoseInRealTime(video) {
     stats.begin();
 
    
-    // The mirrored video copy is only needed as facemesh input or to show
-    // the debug camera view, so skip it otherwise.
-    if (settings.debug.detectFaces || settings.debug.showDetectionDebug) {
+    // The mirrored video copy is only needed for the debug camera view.
+    if (settings.debug.showDetectionDebug) {
       videoCtx.clearRect(0, 0, videoWidth, videoHeight);
       videoCtx.save();
       videoCtx.scale(-1, 1);
@@ -351,14 +346,6 @@ function detectPoseInRealTime(video) {
       videoCtx.restore();
     }
 
-    if (settings.debug.detectFaces) {
-      // Only build the tensor when facemesh needs it.
-      const input = tf.browser.fromPixels(canvas);
-      faceDetection = await facemesh.estimateFaces(input, false, false);
-      input.dispose();
-    } else {
-      faceDetection = null;
-    }
     const __t0 = performance.now();
     const poses = poseDetector.detect(video, videoWidth, videoHeight);
     const __t1 = performance.now();
@@ -377,21 +364,12 @@ function detectPoseInRealTime(video) {
           drawSkeleton(pose.keypoints, minPartConfidence, keypointCtx, 1, color);
         }
       });
-      if(settings.debug.detectFaces) {
-        faceDetection.forEach(face => {
-          Object.values(facePartName2Index).forEach(index => {
-              let p = face.scaledMesh[index];
-              drawPoint(keypointCtx, p[1], p[0], 2, 'red');
-          });
-        });
-      }
     }
 
     canvasScope.project.clear();
 
-    const face = faceDetection && faceDetection.length > 0 ?
-        Skeleton.toFaceFrame(faceDetection[0]) : null;
-    cast.update(tracked, face);
+    // No face tracking: the head follows the pose model's nose and ear points.
+    cast.update(tracked, null);
     cast.draw(settings.debug.showIllustrationDebug);
     const __t2 = performance.now();
     const W = window; W.__a = W.__a || {d: 0, u: 0, n: 0, p: 0, s: 0, ids: new Set(), start: performance.now()};
@@ -522,8 +500,6 @@ export async function bindPage() {
     numPoses: settings.pose.maxPeople,
     minConfidence: settings.pose.minConfidence,
   });
-  setStatusText('Loading FaceMesh model...');
-  facemesh = await facemesh_module.load();
 
   setStatusText('Loading Avatar file...');
   let t0 = new Date();

@@ -11,10 +11,6 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
-    "@tensorflow-models/facemesh": "^0.0.1",
-    "@tensorflow/tfjs": "^1.7.0",
-    "@tensorflow/tfjs-converter": "^1.7.0",
-    "@tensorflow/tfjs-core": "^1.7.0",
     "dat.gui": "^0.7.2",
     "paper": "^0.12.15",
     "stats.js": "^0.17.0",

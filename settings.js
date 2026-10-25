@@ -38,7 +38,6 @@ export const DEFAULTS = {
   },
   // Not saved: these always start off.
   debug: {
-    detectFaces: false,
     showDetectionDebug: false,
     showIllustrationDebug: false,
   },

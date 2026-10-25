@@ -44,7 +44,7 @@ state. Go back to it any time with `git checkout halloween-waypoint-1`.
 | 2 | Show setup: projection, mirroring, framing | ◐ Code done, needs testing on the sheet |
 | 3 | Multiple bodies (same character) | ☐ Not started |
 | 4 | Multiple characters (stretch) | ☐ Not started |
-| 5 | Faces on (optional) | ☐ Not started |
+| 5 | Faces on (optional) | ✕ Dropped |
 
 Show date: **Sat Oct 31, 2026.** Phases 0–3 are the target; 4 and 5 are
 bonuses.
@@ -284,7 +284,11 @@ characters don't swap when the people cross paths.
 
 ---
 
-## Phase 5 (optional): Faces
+## Phase 5 (dropped): Faces
+
+**Dropped 2026-10-24.** Face detection was removed (see the Log). The head
+follows the pose model's nose and ear points instead. The tasks below are
+kept only in case it's ever revisited.
 
 Behind a sheet, with masks and costumes, face tracking will often fail. The
 current fallback already infers the skull from the ear positions. Only do
@@ -353,3 +357,8 @@ Add a dated line for each decision, benchmark or finished phase.
   looking at for small or distant bodies.
 - 2026-10-24: Dropped `yarn watch` and `yarn show`; `yarn dev` now serves on
   the network and allows `.local` host names for phone access.
+- 2026-10-24: Removed face detection (facemesh, TF.js and the `detectFaces`
+  toggle). It slowed the app to a crawl, and the lite pose model's nose and
+  ear points are enough to drive the head. The bundle went from 1.4 MB to
+  0.5 MB. Phase 5 is dropped. Headless smoke test: runs clean, about 28 fps
+  on the 4K clip.
