@@ -456,6 +456,12 @@ function toggleFullscreen() {
   }
 }
 
+// Going fullscreen is the moment the window becomes the projector, so size the
+// canvas to it. The window's size settles a moment after the change.
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) setTimeout(fillWindow, 500);
+});
+
 // A browser only allows fullscreen in response to a click or key press in
 // that same window. When the request comes from the control panel there is
 // none, so show a prompt and take the next click or key press on this page.
