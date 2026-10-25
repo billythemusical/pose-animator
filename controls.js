@@ -92,7 +92,6 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   test.open();
 
   const debug = gui.addFolder('Debug control');
-  bind(debug, 'debug', 'showDetectionDebug');
   bind(debug, 'debug', 'showIllustrationDebug');
   debug.open();
 

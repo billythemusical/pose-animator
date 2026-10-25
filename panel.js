@@ -11,6 +11,9 @@ const settings = JSON.parse(JSON.stringify(DEFAULTS));
 const status = {source: '-', cameraGives: '-', fps: '-', people: '-', mainWindow: 'not connected'};
 const banner = document.getElementById('banner');
 
+// The show page's camera view with the detected points.
+const view = document.getElementById('view');
+const viewCtx = view.getContext('2d');
 let controls = null;
 let bridge = null;
 const send = () => bridge.send({type: 'settings', settings});
@@ -47,6 +50,12 @@ async function start() {
     }
   }, (connected) => {
     if (!connected) setConnected(false, false);
+  }, async (frame) => {
+    const bitmap = await createImageBitmap(new Blob([frame], {type: 'image/jpeg'}));
+    view.width = bitmap.width;
+    view.height = bitmap.height;
+    viewCtx.drawImage(bitmap, 0, 0);
+    bitmap.close();
   });
 }
 

@@ -21,16 +21,59 @@
             background: #12331a;
         }
 
+        /* Phone: camera view on top, controls underneath. */
+        #layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #view {
+            width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            background: #000;
+        }
+
         #controls {
             width: 400px;
             max-width: 100%;
-            margin: 0 auto;
+        }
+
+        #controls .dg.main {
+            width: 100% !important;
+        }
+
+        /* Desktop browser: controls on the left, camera view to the right. */
+        @media (min-width: 900px) {
+            #layout {
+                flex-direction: row-reverse;
+                align-items: flex-start;
+                justify-content: center;
+                padding: 12px;
+            }
+
+            #view {
+                flex: 1;
+                max-width: 960px;
+                max-height: calc(100vh - 80px);
+                position: sticky;
+                top: 12px;
+            }
+
+            #controls {
+                flex: none;
+            }
         }
     </style>
 </head>
 <body>
     <div id="banner">Connecting to the show page...</div>
-    <div id="controls"></div>
+    <div id="layout">
+        <canvas id="view" width="480" height="270"></canvas>
+        <div id="controls"></div>
+    </div>
     <script type="module" src="panel.js"></script>
 </body>
 </html>

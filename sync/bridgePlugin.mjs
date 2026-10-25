@@ -19,15 +19,18 @@ function attach(httpServer) {
   const wss = new WebSocketServer({noServer: true});
   const latest = {};
 
-  const broadcast = (text, except) => {
+  const broadcast = (data, except, isBinary = false) => {
     for (const client of wss.clients) {
-      if (client !== except && client.readyState === WebSocket.OPEN) client.send(text);
+      if (client === except || client.readyState !== WebSocket.OPEN) continue;
+      // Camera frames are droppable: skip a client that is falling behind.
+      if (isBinary && client.bufferedAmount > 1e6) continue;
+      client.send(data, {binary: isBinary});
     }
   };
   const announcePeers = () => {
-    const main = [...wss.clients].some((client) => client.role === 'main');
-    if (!main) delete latest.status;
-    broadcast(JSON.stringify({type: 'peers', main}));
+    const has = (role) => [...wss.clients].some((client) => client.role === role);
+    if (!has('main')) delete latest.status;
+    broadcast(JSON.stringify({type: 'peers', main: has('main'), panel: has('panel')}));
   };
 
   // Only claim our own path; Vite's hot-reload socket upgrades on the same
@@ -41,7 +44,12 @@ function attach(httpServer) {
     ws.role = null;
     REPLAYED.forEach((type) => latest[type] && ws.send(latest[type]));
 
-    ws.on('message', (data) => {
+    ws.on('message', (data, isBinary) => {
+      // Binary messages are camera frames from the show page: pass them on.
+      if (isBinary) {
+        broadcast(data, ws, true);
+        return;
+      }
       const text = data.toString();
       let message;
       try {

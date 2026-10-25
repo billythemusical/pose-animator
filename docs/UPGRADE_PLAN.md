@@ -362,3 +362,10 @@ Add a dated line for each decision, benchmark or finished phase.
   ear points are enough to drive the head. The bundle went from 1.4 MB to
   0.5 MB. Phase 5 is dropped. Headless smoke test: runs clean, about 28 fps
   on the 4K clip.
+- 2026-10-24: Camera view moved off the projector page into the control
+  panel: the show page sends a 480px-wide JPEG with the detected points about
+  10 times a second over the bridge, only while a panel is open. The panel
+  shows it all the time (right of the controls in a desktop browser, above
+  them on a phone). While a panel is connected, the show page hides its own
+  controls and fps meter; they come back if the panel closes. The old
+  "showDetectionDebug" toggle is gone.

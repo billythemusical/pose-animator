@@ -200,8 +200,6 @@ function applySetting(section, key) {
   } else if (section === 'camera') {
     // The camera stream has to restart.
     location.reload();
-  } else if (section === 'debug' && key === 'showDetectionDebug') {
-    hideShowCamera();
   }
 }
 
@@ -251,7 +249,21 @@ function onBridgeMessage(message) {
     controls.refresh();
   } else if (message.type === 'action') {
     runAction(message.name, message.value);
+  } else if (message.type === 'peers') {
+    panelConnected = message.panel;
+    applyPanelPresence();
   }
+}
+
+// While a control panel window is connected, the show page hides its own
+// controls and fps meter so only the skeletons are on the projector. If the
+// panel closes they come back. Uses `visibility` because dat.gui's H key
+// already toggles `display`.
+let panelConnected = false;
+function applyPanelPresence() {
+  const visibility = panelConnected ? 'hidden' : '';
+  controls.gui.domElement.style.visibility = visibility;
+  stats.dom.style.visibility = visibility;
 }
 
 /**
@@ -281,9 +293,6 @@ function setupGui() {
       people: status.people,
     }});
   }, 500);
-
-  // initially hide the camera
-  hideShowCamera();
 }
 
 /**
@@ -299,19 +308,9 @@ function setupFPS() {
  * happens. This function loops with a requestAnimationFrame method.
  */
 function detectPoseInRealTime(video) {
-  const canvas = document.getElementById('output');
-  const keypointCanvas = document.getElementById('keypoints');
-  const videoCtx = canvas.getContext('2d');
-  const keypointCtx = keypointCanvas.getContext('2d');
-
-  // Sizes the debug canvases to the video and starts tracking fresh. Runs
-  // at startup and again whenever the source changes.
+  // Starts tracking fresh. Runs at startup and again whenever the source
+  // changes.
   function applyVideoSize() {
-    canvas.width = videoWidth;
-    canvas.height = videoHeight;
-    keypointCanvas.width = videoWidth;
-    keypointCanvas.height = videoHeight;
-
     // A torso can move a quarter of the frame width between frames and still
     // count as the same person.
     tracker = new PoseTracker({maxDistance: videoWidth * 0.25});
@@ -335,17 +334,6 @@ function detectPoseInRealTime(video) {
     // Begin monitoring code for frames per second
     stats.begin();
 
-   
-    // The mirrored video copy is only needed for the debug camera view.
-    if (settings.debug.showDetectionDebug) {
-      videoCtx.clearRect(0, 0, videoWidth, videoHeight);
-      videoCtx.save();
-      videoCtx.scale(-1, 1);
-      videoCtx.translate(-videoWidth, 0);
-      videoCtx.drawImage(video, 0, 0, videoWidth, videoHeight);
-      videoCtx.restore();
-    }
-
     const __t0 = performance.now();
     const poses = poseDetector.detect(video, videoWidth, videoHeight);
     const __t1 = performance.now();
@@ -355,15 +343,10 @@ function detectPoseInRealTime(video) {
     poses.forEach((pose) => Skeleton.flipPose(pose));
     const tracked = tracker.update(poses);
 
-    keypointCtx.clearRect(0, 0, videoWidth, videoHeight);
-    if (settings.debug.showDetectionDebug) {
-      tracked.forEach(({id, pose, missed}) => {
-        if (missed === 0 && pose.score >= minPoseConfidence) {
-          const color = trackColor(id);
-          drawKeypoints(pose.keypoints, minPartConfidence, keypointCtx, 1, color);
-          drawSkeleton(pose.keypoints, minPartConfidence, keypointCtx, 1, color);
-        }
-      });
+    // The camera view with the detected points goes to the panel window
+    // whenever one is open, never to the projector.
+    if (panelConnected) {
+      sendDebugFrame(video, tracked);
     }
 
     canvasScope.project.clear();
@@ -400,6 +383,47 @@ function detectPoseInRealTime(video) {
   }
 
   poseDetectionFrame();
+}
+
+const DEBUG_VIEW_WIDTH = 480;
+const DEBUG_VIEW_INTERVAL_MS = 100;
+const debugCanvas = document.createElement('canvas');
+let lastDebugFrame = 0;
+let debugFrameEncoding = false;
+
+/**
+ * Draws the mirrored camera image with each tracked person's points on top,
+ * at a small size, and sends it to the panel as a JPEG about 10 times a second.
+ */
+function sendDebugFrame(video, tracked) {
+  const now = performance.now();
+  if (debugFrameEncoding || now - lastDebugFrame < DEBUG_VIEW_INTERVAL_MS) return;
+  lastDebugFrame = now;
+
+  const scale = DEBUG_VIEW_WIDTH / videoWidth;
+  const height = Math.round(videoHeight * scale);
+  if (debugCanvas.width !== DEBUG_VIEW_WIDTH || debugCanvas.height !== height) {
+    debugCanvas.width = DEBUG_VIEW_WIDTH;
+    debugCanvas.height = height;
+  }
+  const ctx = debugCanvas.getContext('2d');
+  ctx.save();
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, -DEBUG_VIEW_WIDTH, 0, DEBUG_VIEW_WIDTH, height);
+  ctx.restore();
+  tracked.forEach(({id, pose, missed}) => {
+    if (missed === 0 && pose.score >= minPoseConfidence) {
+      const color = trackColor(id);
+      drawKeypoints(pose.keypoints, minPartConfidence, ctx, scale, color);
+      drawSkeleton(pose.keypoints, minPartConfidence, ctx, scale, color);
+    }
+  });
+
+  debugFrameEncoding = true;
+  debugCanvas.toBlob(async (blob) => {
+    debugFrameEncoding = false;
+    if (blob) bridge.sendBinary(await blob.arrayBuffer());
+  }, 'image/jpeg', 0.6);
 }
 
 const TRACK_COLORS = ['aqua', 'yellow', 'magenta', 'lime', 'orange', 'white'];
@@ -473,18 +497,6 @@ document.addEventListener('keydown', (e) => {
     stats.dom.style.display = stats.dom.style.display === 'none' ? '' : 'none';
   }
 });
-
-const output = document.getElementById('output')
-
-function hideShowCamera() {
-  console.log('running hideSHowCamera')
-  if(settings.debug.showDetectionDebug == false) {
-    output.style.display = "none"
-  } else {
-    output.style.display = "block"
-    console.log('hiding camera')
-  }
-}
 
 /**
  * Kicks off the demo by loading the pose model, finding and loading
