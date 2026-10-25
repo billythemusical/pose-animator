@@ -67,8 +67,8 @@ const avatarSvgs = {
 };
 
 /**
- * Loads a the camera to be used in the demo
- *
+ * Points the hidden <video> element at the webcam. Replaces any source it
+ * was already playing.
  */
 async function setupCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -78,6 +78,7 @@ async function setupCamera() {
 
   const video = document.getElementById('video');
   video.style = "display: none"
+  stopSource(video);
 
   // Ask for the camera's own aspect ratio rather than a square, so people at
   // the sides of the view aren't cropped out.
@@ -92,7 +93,35 @@ async function setupCamera() {
   });
   video.srcObject = stream;
 
-  return new Promise((resolve) => {
+  return waitForVideoSize(video);
+}
+
+/**
+ * Plays a recorded clip in place of the camera (test mode), so tracking and
+ * framing can be tried repeatably without people in front of the camera.
+ */
+async function setupVideoFile(url) {
+  const video = document.getElementById('video');
+  video.style = "display: none"
+  stopSource(video);
+
+  video.loop = true;
+  video.muted = true;
+  video.src = url;
+
+  return waitForVideoSize(video);
+}
+
+function stopSource(video) {
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach((track) => track.stop());
+    video.srcObject = null;
+  }
+  video.removeAttribute('src');
+}
+
+function waitForVideoSize(video) {
+  return new Promise((resolve, reject) => {
     video.onloadedmetadata = () => {
       videoWidth = video.videoWidth;
       videoHeight = video.videoHeight;
@@ -100,14 +129,47 @@ async function setupCamera() {
       video.height = videoHeight;
       resolve(video);
     };
+    video.onerror = () => reject(new Error('Could not load the video source'));
   });
 }
 
 async function loadVideo() {
-  const video = await setupCamera();
+  const testVideoUrl = new URLSearchParams(location.search).get('video');
+  const video = testVideoUrl ?
+      await setupVideoFile(testVideoUrl) : await setupCamera();
   video.play();
+  if (testVideoUrl) {
+    sourceState.source = 'video: ' + testVideoUrl.split('/').pop();
+  }
 
   return video;
+}
+
+// Which input feeds the detector. Test mode swaps a recorded clip in for the
+// camera; neither choice is saved, so a reload goes back to the camera.
+const sourceState = {source: 'camera'};
+// Set when the source (and so the video size) changes, so the frame loop
+// resizes its canvases and starts tracking fresh.
+let sourceChanged = false;
+
+async function switchSource(setup, label) {
+  await setup();
+  video.play();
+  sourceState.source = label;
+  sourceChanged = true;
+}
+
+function chooseVideoFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'video/*';
+  input.onchange = () => {
+    const file = input.files[0];
+    if (file) {
+      switchSource(() => setupVideoFile(URL.createObjectURL(file)), 'video: ' + file.name);
+    }
+  };
+  input.click();
 }
 
 const guiState = {
@@ -205,6 +267,14 @@ function setupGui(cameras) {
       });
   camera.add({actual: `${videoWidth}x${videoHeight}`}, 'actual').name('camera gives');
 
+  // Test mode: play a recorded clip instead of the live camera.
+  let source = gui.addFolder('Test mode');
+  const sourceLabel = source.add(sourceState, 'source').listen();
+  sourceLabel.domElement.querySelector('input').readOnly = true;
+  source.add({chooseVideoFile}, 'chooseVideoFile').name('play a video file...');
+  source.add({useCamera: () => switchSource(setupCamera, 'camera')}, 'useCamera').name('use camera');
+  source.open();
+
   let output = gui.addFolder('Debug control');
   output.add(guiState.debug, 'detectFaces');
   output.add(guiState.debug, 'showDetectionDebug').onChange(hideShowCamera);
@@ -233,16 +303,31 @@ function detectPoseInRealTime(video) {
   const videoCtx = canvas.getContext('2d');
   const keypointCtx = keypointCanvas.getContext('2d');
 
-  canvas.width = videoWidth;
-  canvas.height = videoHeight;
-  keypointCanvas.width = videoWidth;
-  keypointCanvas.height = videoHeight;
+  // Sizes the debug canvases to the video and starts tracking fresh. Runs
+  // at startup and again whenever the source changes.
+  function applyVideoSize() {
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    keypointCanvas.width = videoWidth;
+    keypointCanvas.height = videoHeight;
 
-  // A torso can move a quarter of the frame width between frames and still
-  // count as the same person.
-  tracker = new PoseTracker({maxDistance: videoWidth * 0.25});
+    // A torso can move a quarter of the frame width between frames and still
+    // count as the same person.
+    tracker = new PoseTracker({maxDistance: videoWidth * 0.25});
+  }
+  applyVideoSize();
 
   async function poseDetectionFrame() {
+    // Nothing to detect until the source has delivered a frame.
+    if (video.readyState < 2) {
+      requestAnimationFrame(poseDetectionFrame);
+      return;
+    }
+    if (sourceChanged) {
+      sourceChanged = false;
+      applyVideoSize();
+    }
+
     // Begin monitoring code for frames per second
     stats.begin();
 

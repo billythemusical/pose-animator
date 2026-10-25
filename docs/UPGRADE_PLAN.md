@@ -18,12 +18,12 @@ state. Go back to it any time with `git checkout halloween-waypoint-1`.
       only the canvas while the controls stay on the laptop. The panel and
       the canvas window have to share settings live (the existing
       localStorage settings, or a `BroadcastChannel`).
-- [ ] **Multi-body test mode.** A toggle that feeds a recorded multi-person
-      clip (the four-dancers clip in the test fixtures folder, which is
-      kept out of git, or a replacement video) into the detector instead of
-      the camera, so framing and tracking can be tested with up to three
-      bodies without a live crowd. Also useful for framing people while
-      they dance.
+- [x] **Multi-body test mode** (code done, needs a look on the real setup).
+      A "Test mode" folder in the controls plays a recorded clip in place of
+      the camera: "play a video file..." opens a file picker, and "use
+      camera" switches back. Loading `/?video=/test/fixtures/pretty-girls-walk.mp4`
+      starts straight in test mode. Raise `maxPeople` to try several bodies.
+      The choice isn't saved, so a reload goes back to the camera.
 
 | Phase | What | Status |
 |---|---|---|
@@ -328,3 +328,8 @@ Add a dated line for each decision, benchmark or finished phase.
   2 and 4 person runs will use the video test mode. Camera will be overhead,
   shooting down. "Come dance!" idle screen is now a planned item, in a big
   blocky italic font.
+- 2026-10-24: Video test mode added. Headless Chrome smoke test with the
+  pretty-girls-walk clip at `maxPeople` 1: tracks one person, about 28 ms
+  detect and 2 ms skeleton per frame, 27-31 fps (headless, software
+  rendering and a large video frame, so it says little about the show
+  laptop). The file-picker button wasn't exercised headlessly.
