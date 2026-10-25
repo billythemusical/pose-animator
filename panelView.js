@@ -23,6 +23,8 @@ export class PanelView {
     this.opening = false;
     this.cameraFailed = false;
     this.wantFrames = null;
+    this.mode = 'light';
+    this.source = 'camera';
 
     this.poses = null;
     this.frame = null;
@@ -38,7 +40,10 @@ export class PanelView {
 
   /** Called with the show page's source label ("camera", "video: ..."). */
   setSource(source) {
-    if (source.startsWith('camera')) {
+    this.source = source;
+    if (this.mode === 'off') {
+      this.stopCamera();
+    } else if (source.startsWith('camera')) {
       if (!this.stream && !this.opening && !this.cameraFailed) this.startCamera();
     } else {
       this.stopCamera();
@@ -46,9 +51,17 @@ export class PanelView {
     this.reportWantFrames();
   }
 
+  /** The camera view setting: 'live', 'light' or 'off'. */
+  setMode(mode) {
+    if (mode === this.mode) return;
+    this.mode = mode;
+    this.canvas.style.visibility = mode === 'off' ? 'hidden' : '';
+    this.setSource(this.source);
+  }
+
   /** Re-sends whether JPEG frames are wanted, e.g. after the show page reconnects. */
   reportWantFrames(force = false) {
-    const want = this.stream === null;
+    const want = this.stream === null && this.mode !== 'off';
     if (force || want !== this.wantFrames) {
       this.wantFrames = want;
       this.onWantFrames(want);

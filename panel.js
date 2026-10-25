@@ -35,7 +35,10 @@ async function start() {
   controls = buildControls(settings, status, {
     isPanel: true,
     videos,
-    onChange: send,
+    onChange: () => {
+      view.setMode(settings.debug.cameraView);
+      send();
+    },
     onAction: (name, value) => bridge.send({type: 'action', name, value}),
   });
 
@@ -43,6 +46,7 @@ async function start() {
   bridge = connectBridge('panel', (message) => {
     if (message.type === 'settings') {
       applyRemoteSettings(settings, message.settings);
+      view.setMode(settings.debug.cameraView);
       controls.refresh();
     } else if (message.type === 'status') {
       Object.assign(status, message.status);

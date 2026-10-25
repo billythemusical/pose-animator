@@ -351,8 +351,11 @@ function detectPoseInRealTime(video) {
 
     // The camera view with the detected points goes to the panel window
     // whenever one is open, never to the projector.
-    if (panelConnected) {
-      sendPoses(tracked);
+    // The panel comes second to the show: 'light' sends points less often,
+    // 'off' sends nothing.
+    const cameraView = settings.debug.cameraView;
+    if (panelConnected && cameraView !== 'off') {
+      sendPoses(tracked, cameraView === 'live');
       if (panelWantsFrames) sendDebugFrame(video, tracked);
     }
 
@@ -393,7 +396,11 @@ function detectPoseInRealTime(video) {
 }
 
 /** Sends the tracked people's points; the panel draws them over its own camera view. */
-function sendPoses(tracked) {
+let lastPoseSend = 0;
+function sendPoses(tracked, everyFrame) {
+  const now = performance.now();
+  if (!everyFrame && now - lastPoseSend < DEBUG_VIEW_INTERVAL_MS) return;
+  lastPoseSend = now;
   const poses = tracked
       .filter(({pose, missed}) => missed === 0 && pose.score >= minPoseConfidence)
       .map(({id, pose}) => ({id, keypoints: pose.keypoints}));

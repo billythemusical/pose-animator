@@ -39,6 +39,10 @@ export const DEFAULTS = {
   // Not saved: these always start off.
   debug: {
     showIllustrationDebug: false,
+    // The camera view in the control panel. 'live' sends the detected points
+    // every frame, 'light' about 10 times a second (cheaper for the show
+    // page), 'off' sends nothing.
+    cameraView: 'light',
   },
 };
 

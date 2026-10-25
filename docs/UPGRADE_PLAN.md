@@ -378,3 +378,8 @@ Add a dated line for each decision, benchmark or finished phase.
   instead of queuing. Headless test: the panel's own camera drew at 640x360.
   Not yet checked: one real webcam shared between the show page and the
   panel on this Mac.
+- 2026-10-24: Panel camera view got a speed setting (Debug control > panel
+  camera view): `light` (default, points about 10 times a second), `live`
+  (every frame) and `off` (sends nothing and the panel closes its camera).
+  The show comes first. Measured over the bridge: off 0/s, light 8.6/s,
+  live 29/s. The fps effect on the real laptop hasn't been measured.

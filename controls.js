@@ -92,6 +92,7 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   test.open();
 
   const debug = gui.addFolder('Debug control');
+  bind(debug, 'debug', 'cameraView', ['light', 'live', 'off']).name('panel camera view');
   bind(debug, 'debug', 'showIllustrationDebug');
   debug.open();
 
