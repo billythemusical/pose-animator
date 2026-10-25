@@ -22,8 +22,8 @@
   },
   "scripts": {
     "postinstall": "node scripts/copy-mediapipe-wasm.mjs",
-    "dev": "vite --host --open",
-    "start": "vite --host --open",
+    "dev": "OPEN_PANEL=1 vite --host --open",
+    "start": "OPEN_PANEL=1 vite --host --open",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

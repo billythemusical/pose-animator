@@ -5,6 +5,7 @@
 // own beyond the last settings and status message, which it replays to pages
 // that connect later.
 
+import {execFile} from 'node:child_process';
 import {WebSocketServer, WebSocket} from 'ws';
 
 const PATH = '/bridge';
@@ -57,10 +58,31 @@ function attach(httpServer) {
   });
 }
 
+// With OPEN_PANEL set (see `yarn dev`), opens the control panel in its own
+// Chrome window once the server is up, ready to drag to the other monitor.
+// Cleared after the first time so a server restart doesn't open a second one.
+function openPanelWindow(httpServer) {
+  if (!process.env.OPEN_PANEL) return;
+  httpServer.once('listening', () => {
+    process.env.OPEN_PANEL = '';
+    const url = `http://localhost:${httpServer.address().port}/panel.html`;
+    if (process.platform !== 'darwin') {
+      console.log(`Control panel: ${url}`);
+      return;
+    }
+    execFile('open', ['-na', 'Google Chrome', '--args', '--new-window', url], (error) => {
+      if (error) console.log(`Could not open Chrome; control panel: ${url}`);
+    });
+  });
+}
+
 export function bridgePlugin() {
   return {
     name: 'pose-animator-bridge',
-    configureServer: (server) => attach(server.httpServer),
+    configureServer: (server) => {
+      attach(server.httpServer);
+      openPanelWindow(server.httpServer);
+    },
     configurePreviewServer: (server) => attach(server.httpServer),
   };
 }

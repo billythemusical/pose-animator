@@ -32,6 +32,7 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   };
 
   const info = gui.addFolder('Status');
+  if (!isPanel) info.add({openPanel: () => onAction('openPanel')}, 'openPanel').name('open control panel (P)');
   if (isPanel) readOnly(info, 'mainWindow', 'main window');
   readOnly(info, 'fps', 'fps');
   readOnly(info, 'people', 'people drawn');

@@ -231,6 +231,11 @@ function onSettingsReplaced(sections) {
 function runAction(name, value) {
   if (name === 'fillWindow') fillWindow();
   if (name === 'toggleFullscreen') toggleFullscreen();
+  if (name === 'openPanel') {
+    // A browser only opens a new window from a click or key press, which is
+    // why this isn't done automatically on load.
+    window.open('panel.html', 'pose-animator-panel', 'popup,width=440,height=900');
+  }
   if (name === 'chooseVideoFile') chooseVideoFile();
   if (name === 'useCamera') switchSource(setupCamera, 'camera');
   if (name === 'playVideoUrl') switchSource(() => setupVideoFile(value), 'video: ' + value.split('/').pop());
@@ -452,6 +457,7 @@ function toggleFullscreen() {
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  if (e.key === 'p' || e.key === 'P') runAction('openPanel');
   // dat.gui already hides itself on H; hide the FPS meter with it.
   if (e.key === 'h' || e.key === 'H') {
     stats.dom.style.display = stats.dom.style.display === 'none' ? '' : 'none';
