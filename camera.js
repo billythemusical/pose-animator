@@ -238,7 +238,7 @@ function runAction(name, value) {
   }
   if (name === 'chooseVideoFile') chooseVideoFile();
   if (name === 'useCamera') switchSource(setupCamera, 'camera');
-  if (name === 'playVideoUrl') switchSource(() => setupVideoFile(value), 'video: ' + value.split('/').pop());
+  if (name === 'playVideoUrl') switchSource(() => setupVideoFile(value), 'video: ' + decodeURIComponent(value.split('/').pop()));
   if (name === 'resetLayout') {
     Object.assign(settings.projection, DEFAULTS.projection);
     Object.assign(settings.skeleton, DEFAULTS.skeleton);
@@ -449,9 +449,35 @@ function fillWindow() {
 function toggleFullscreen() {
   if (document.fullscreenElement) {
     document.exitFullscreen();
-  } else {
+  } else if (navigator.userActivation.isActive) {
     document.documentElement.requestFullscreen();
+  } else {
+    armFullscreen();
   }
+}
+
+// A browser only allows fullscreen in response to a click or key press in
+// that same window. When the request comes from the control panel there is
+// none, so show a prompt and take the next click or key press on this page.
+function armFullscreen() {
+  if (document.getElementById('fullscreen-prompt')) return;
+  const prompt = document.createElement('div');
+  prompt.id = 'fullscreen-prompt';
+  prompt.textContent = 'Click here for fullscreen';
+  Object.assign(prompt.style, {
+    position: 'fixed', inset: '0', zIndex: '10', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+    background: 'rgba(0, 0, 0, 0.6)', color: 'white', font: '32px sans-serif',
+  });
+  const finish = (e) => {
+    prompt.remove();
+    document.removeEventListener('keydown', finish);
+    // Escape just dismisses the prompt.
+    if (e.key !== 'Escape') document.documentElement.requestFullscreen();
+  };
+  prompt.addEventListener('pointerdown', finish);
+  document.addEventListener('keydown', finish);
+  document.body.appendChild(prompt);
 }
 
 document.addEventListener('keydown', (e) => {

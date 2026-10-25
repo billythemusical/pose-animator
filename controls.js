@@ -11,11 +11,11 @@ import {BACKGROUND_NAMES} from './backgrounds';
  * @param settings the shared settings object (see settings.js)
  * @param status   read-only values shown in the controls: {source,
  *                 cameraGives, fps, people, mainWindow}
- * @param isPanel  true in the separate panel window: hides actions that only
- *                 work from the main window itself
+ * @param videos   (panel only) file names in test/fixtures to offer in test mode
+ * @param isPanel  true in the separate panel window
  * @returns {gui, refresh} - call refresh() after settings change elsewhere
  */
-export function buildControls(settings, status, {onChange, onAction, isPanel = false}) {
+export function buildControls(settings, status, {onChange, onAction, isPanel = false, videos = []}) {
   const gui = new dat.GUI({width: isPanel ? 400 : 300, autoPlace: !isPanel});
   if (isPanel) {
     document.getElementById('controls').appendChild(gui.domElement);
@@ -54,10 +54,8 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   bind(projection, 'projection', 'backgroundFit', ['cover', 'stretch', 'tile']).name('background fit');
   projection.add({fillWindow: () => onAction('fillWindow')}, 'fillWindow')
       .name(isPanel ? 'fill projector window' : 'fill window');
-  if (!isPanel) {
-    projection.add({toggleFullscreen: () => onAction('toggleFullscreen')}, 'toggleFullscreen')
-        .name('fullscreen (F)');
-  }
+  projection.add({toggleFullscreen: () => onAction('toggleFullscreen')}, 'toggleFullscreen')
+      .name(isPanel ? 'fullscreen projector window' : 'fullscreen (F)');
   projection.open();
 
   const skeleton = gui.addFolder('Skeleton');
@@ -77,11 +75,15 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   const test = gui.addFolder('Test mode');
   readOnly(test, 'source', 'source');
   if (isPanel) {
-    // A file picker can't reach across machines, so the panel names a path
-    // the main page's server can serve instead.
-    const video = {url: '/test/fixtures/pretty-girls-walk.mp4'};
-    test.add(video, 'url').name('video path');
-    test.add({play: () => onAction('playVideoUrl', video.url)}, 'play').name('play this video');
+    // A file picker can't reach the show page from another window, so the
+    // panel lists the clips in test/fixtures that its server can serve.
+    const options = {};
+    videos.forEach((name) => {
+      options[name] = `/api/video/${encodeURIComponent(name)}`;
+    });
+    const video = {file: videos.length ? options[videos[0]] : ''};
+    test.add(video, 'file', videos.length ? options : {'(no videos in test/fixtures)': ''}).name('video');
+    test.add({play: () => video.file && onAction('playVideoUrl', video.file)}, 'play').name('play this video');
   } else {
     test.add({chooseVideoFile: () => onAction('chooseVideoFile')}, 'chooseVideoFile')
         .name('play a video file...');
