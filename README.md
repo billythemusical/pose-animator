@@ -1,10 +1,47 @@
 # Pose Animator
 
-Pose Animator takes a 2D vector illustration and animates its containing curves in real-time based on the recognition result from PoseNet and FaceMesh. It borrows the idea of skeleton-based animation from computer graphics and applies it to vector characters.
+Pose Animator takes a 2D vector illustration and animates its containing curves in real-time based on the recognition result from a pose model. It borrows the idea of skeleton-based animation from computer graphics and applies it to vector characters.
 
-This is running in the browser in realtime using [TensorFlow.js](https://www.tensorflow.org/js). Check out more cool TF.js demos [here](https://www.tensorflow.org/js/demos).
+*This is a Halloween 2026 fork of [yemount/pose-animator](https://github.com/yemount/pose-animator), not an officially supported Google product.*
 
-*This is not an officially supported Google product.*
+## This fork: dancing skeletons on a sheet
+
+Dancing skeletons rear-projected onto a sheet, one per trick-or-treater. It runs in the browser on a laptop with a webcam.
+
+- **Pose model:** MediaPipe Pose Landmarker (lite), up to 6 people, each tracked with a stable ID (`pose/tracker.js`) and given their own skeleton (`illustrationGen/cast.js`). Face detection was removed.
+- **Idle sign:** "COME DANCE!" fades in when nobody has been in frame for 1.5 s.
+
+### Run it
+
+```sh
+yarn          # install, once
+yarn dev      # hot-reloading dev server; opens the show page and the control panel
+yarn test     # tracker unit tests
+yarn build    # production build into dist/
+```
+
+The show page (`/`) is what goes on the projector. Press `F` for fullscreen and `H` to hide the controls. The control panel (`/panel.html`) opens in its own Chrome window; drag it to your other monitor. `P` on the show page opens it again.
+
+### Control panel
+
+- Same controls as the show page, plus the camera view with the detected points. While a panel is open, the show page hides its own controls and fps meter.
+- Panel and show page talk over a WebSocket at `/bridge`, built into the Vite server (`sync/bridgePlugin.mjs`). There is no password, so use it on a network you trust.
+- On the same Wi-Fi it also works from a phone: `http://<computer name>.local:5173/panel.html`.
+- **panel camera view** (Debug control): `light` (default) sends points about 10 times a second, `live` every frame, `off` nothing. The show comes first, so drop this if fps suffers.
+- "fullscreen projector window" needs one click on the projector window, because browsers require a click in the window itself. It then fills the canvas to the screen.
+
+### Test mode
+
+Play a recorded clip in place of the camera to try several bodies, framing and fps. Put mp4 files in `test/fixtures/` (they are git-ignored, see its README) and pick one in the panel's **Test mode** folder, or open `/?video=/api/video/<file name>`. Raise `maxPeople` to see more than one skeleton.
+
+### Backgrounds
+
+Drop png, jpg or webp files into `resources/backgrounds/`. They appear in the **background** list, with a fit setting (cover, stretch, tile).
+
+### Docs
+
+- [docs/UPGRADE_PLAN.md](docs/UPGRADE_PLAN.md): progress tracker, roadmap and dated log.
+- [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md): how the skeleton animation works, and how to make a character.
 
 <img src="/resources/gifs/avatar-new-1.gif?raw=true" alt="cameraDemo" style="width: 250px;"/>
 
@@ -14,7 +51,7 @@ In skeletal animation a character is represented in two parts:
 1. a surface used to draw the character, and 
 1. a hierarchical set of interconnected bones used to animate the surface. 
 
-In Pose Animator, the surface is defined by the 2D vector paths in the input SVG files. For the bone structure, Pose Animator provides a predefined rig (bone hierarchy) representation, designed based on the keypoints from PoseNet and FaceMesh. This bone structure’s initial pose is specified in the input SVG file, along with the character illustration, while the real time bone positions are updated by the recognition result from ML models.
+In Pose Animator, the surface is defined by the 2D vector paths in the input SVG files. For the bone structure, Pose Animator provides a predefined rig (bone hierarchy) representation, designed based on the keypoints from the pose model. This bone structure’s initial pose is specified in the input SVG file, along with the character illustration, while the real time bone positions are updated by the recognition result from ML models.
 
 <img src="https://firebasestorage.googleapis.com/v0/b/pose-animator-demo.appspot.com/o/ml-keypoints.png?alt=media" style="width:250px;"/>
 
@@ -31,20 +68,6 @@ The camera demo animates a 2D avatar in real-time from a webcam video stream.
 ### Demo 2: [Static image](https://pose-animator-demo.firebaseapp.com/static_image.html)
 
 The static image demo shows the avatar positioned from a single image.
-
-## Build And Run
-
-Install dependencies and prepare the build directory:
-
-```sh
-yarn
-```
-
-To watch files for changes, and launch a dev server:
-
-```sh
-yarn watch
-```
 
 ## Platform support
 

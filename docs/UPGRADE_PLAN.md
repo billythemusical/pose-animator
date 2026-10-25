@@ -10,11 +10,17 @@ a decision. Phases are in order; each one leaves the app working.
 
 ## Next up (top of the list)
 
-Waypoint: tag `halloween-waypoint-1` (2026-10-24) is a known-working
-state. Go back to it any time with `git checkout halloween-waypoint-1`.
+Waypoints (known-working states; go back with `git checkout <tag>`):
+- `halloween-waypoint-1`: tracker, cast and settings refactor.
+- `halloween-waypoint-2` (2026-10-24): control panel window, bridge, video
+  test mode, backgrounds, camera view in the panel, face detection removed,
+  "COME DANCE!" idle sign.
 
-- [x] **Separate control panel window** (code done; needs a try from a
-      second machine). Open `/panel.html` in any browser that can reach the
+The items below are done and kept as a record. What's left is in
+[Open items](#open-items).
+
+- [x] **Separate control panel window** (works in tests; the show is
+      one machine with two monitors, so it still needs a look there). Open `/panel.html` in any browser that can reach the
       laptop. It shows the same controls as the main page, and changes go
       over a WebSocket bridge at `/bridge`, built into the Vite dev and
       preview servers (`sync/bridgePlugin.mjs`), so there's nothing extra to
@@ -33,7 +39,7 @@ state. Go back to it any time with `git checkout halloween-waypoint-1`.
 - [x] **Multi-body test mode** (code done, needs a look on the real setup).
       A "Test mode" folder in the controls plays a recorded clip in place of
       the camera: "play a video file..." opens a file picker, and "use
-      camera" switches back. Loading `/?video=/test/fixtures/pretty-girls-walk.mp4`
+      camera" switches back. Loading `/?video=/api/video/pretty-girls-walk.mp4`
       starts straight in test mode. Raise `maxPeople` to try several bodies.
       The choice isn't saved, so a reload goes back to the camera.
 
@@ -41,8 +47,8 @@ state. Go back to it any time with `git checkout halloween-waypoint-1`.
 |---|---|---|
 | 0 | Clean up the build and dependencies | ✅ Done |
 | 1 | Swap PoseNet for a modern pose model | ✅ Done (crowd benchmark still open) |
-| 2 | Show setup: projection, mirroring, framing | ◐ Code done, needs testing on the sheet |
-| 3 | Multiple bodies (same character) | ☐ Not started |
+| 2 | Show setup: projection, mirroring, framing | ◐ Code done, needs testing on the sheet (camera crop/zoom still to add) |
+| 3 | Multiple bodies (same character) | ◐ Code done, needs a 3-person test |
 | 4 | Multiple characters (stretch) | ☐ Not started |
 | 5 | Faces on (optional) | ✕ Dropped |
 
@@ -51,24 +57,28 @@ bonuses.
 
 ---
 
-## Where things stand
+## Where things stand (2026-10-24)
 
-- **Model:** PoseNet MobileNetV1 at `inputResolution: 200` on a 300×300
-  camera feed (`camera.js:107-111`). It decodes in multi-person mode but with
-  `maxDetections: 1` (`camera.js:188-194`), and only `poses[0]` is ever drawn
-  (`camera.js:219-230`).
-- **One body:** there's one global `illustration`, which holds one
-  `Skeleton`. The skeleton smooths each joint against the previous frame
-  (`skeleton.js:531-548`), so it assumes the same person every frame.
-- **Build:** Parcel 1 and Babel 6, both from around 2018. The working tree
-  has a mismatched dependency: `@tensorflow/tfjs-backend-cpu@^4.12` sits next
-  to `tfjs-core@^1.7`, and `package-lock.json` is staged for deletion. That
-  needs fixing before anything else.
-- **Faces:** `@tensorflow-models/facemesh@0.0.1` is off by default (the
-  `detectFaces` toggle). `face-api.js` is installed but never used.
-- **Canvas:** a 300×300 video is stretched onto an 800×1600 canvas, which
-  scales width ×2.67 and height ×5.33 (`camera.js:242-245`). Squashing the
-  frame like this won't work once several people stand side by side.
+- **Pose:** MediaPipe Pose Landmarker (lite), up to 6 people. 60 fps with
+  one person on the show laptop.
+- **Bodies:** `pose/tracker.js` keeps stable IDs; `illustrationGen/cast.js`
+  gives each ID its own skeleton from a prebuilt pool.
+- **Show page and panel:** the show page is the projector view; the control
+  panel is a separate window over a WebSocket bridge, with the camera view,
+  video test mode, backgrounds and the "COME DANCE!" idle sign.
+- **Build:** Vite, yarn. No TF.js, no face detection.
+- **Still to do before Oct 31:** see [Open items](#open-items).
+
+### Open items
+
+- [ ] Run on the real sheet with the overhead camera (Phase 2 "Done when").
+- [ ] Benchmark 2 and 4 people on the show laptop (use test mode).
+- [ ] Try 3 people dancing at once, and two crossing paths (Phase 3
+      "Done when"). Tracking looked twitchy on the 4K test clip: track IDs
+      were lost and re-found.
+- [ ] Camera crop/zoom control for the overhead view.
+- [ ] Check one real webcam shared between the show page and the panel.
+- [ ] Check the panel on a phone (layout and `.local` address).
 
 ---
 
@@ -250,14 +260,14 @@ question, so tracking, crossing paths and fps can be checked repeatably
 without a live crowd. Live testing on the porch comes last.
 
 ### Tasks
-- [ ] `pose/tracker.js` with stable IDs, plus a unit test using hand-made
-      pose arrays (two people swap order in the array; their IDs should
-      stay the same).
-- [ ] `illustrationGen/cast.js` with spawn, update and despawn, plus a
+- [x] `pose/tracker.js` with stable IDs, plus a unit test using hand-made
+      pose arrays (`test/tracker.test.js`, run with `yarn test`).
+- [x] `illustrationGen/cast.js` with spawn, update and despawn, plus a
       prebuilt pool.
-- [ ] Rewire `detectPoseInRealTime` to run through detector → tracker → cast.
-- [ ] Make the debug overlay color each person's keypoints by track ID.
-- [ ] `maxPeople` and confidence controls in the GUI.
+- [x] Rewire `detectPoseInRealTime` to run through detector → tracker → cast.
+- [x] Make the debug overlay color each person's keypoints by track ID (now
+      in the panel's camera view).
+- [x] `maxPeople` and confidence controls in the GUI.
 
 **Done when:** 3 people dance at once, each with their own skeleton. Two
 people crossing paths get their own skeletons back afterwards, and someone

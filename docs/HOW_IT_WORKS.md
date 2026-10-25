@@ -66,17 +66,18 @@ part instead of blending with the bones around it.
 
 ## 4. Every frame: pose in, drawing out (`camera.js` → `updateSkeleton` → `draw`)
 
-1. **PoseNet** looks at the camera frame and returns 17 keypoints, each with
-   x, y and a confidence score.
+1. **MediaPipe Pose Landmarker** looks at the camera frame. `pose/toPoseNetFormat.js`
+   converts its landmarks into 17 keypoints, each with x, y and a confidence
+   score, and `pose/tracker.js` gives each person a stable ID.
 2. `Skeleton.flipPose` swaps left and right names to match the mirrored
    display.
 3. `Skeleton.updatePoseParts` **smooths** each joint by blending the new
    position with last frame's, weighted by confidence. Shaky, low-confidence
    detections move the joint less. (This is why multiple bodies need
    tracking: the blend assumes the same person as last frame.)
-4. `updateFaceParts` places the face joints. With face detection off (the
-   default), the whole face rig is positioned from the two **ear** keypoints.
-   That's why the skull still turns and scales without facemesh.
+4. `updateFaceParts` places the face joints. There is no face detection, so
+   the whole face rig is positioned from the two **ear** keypoints. That's
+   why the skull still turns and scales.
 5. Every bone gets its live position. The live total bone length divided by
    the rest-pose total gives the scale, so you get bigger as you walk toward
    the camera.
