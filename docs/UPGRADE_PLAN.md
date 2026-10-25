@@ -136,8 +136,10 @@ the new model's output into that shape. With the adapter in place,
       identical output.
 - [x] **Live check:** run `yarn dev` and dance. Raise each arm and check
       that left and right match.
-- [ ] **Benchmark on the show laptop** with 1, 2 and 4 people in frame. Write
-      the fps for each in the Log.
+- [x] **Benchmark on the show laptop, 1 person:** 60 fps.
+- [ ] **Benchmark with 2 and 4 people.** Use the multi-body test mode (video
+      in place of the camera) instead of rounding up live people. Write the
+      fps for each in the Log.
 
 **Done when:** one person dances, the skeleton tracks them visibly better
 than PoseNet did, and fps with 4 people stays at 24 or above. If 4 people
@@ -151,10 +153,14 @@ drops below 24 fps, try MoveNet MultiPose before moving on.
       sheet see the image flipped left to right. Add a GUI toggle that
       applies `scale(-1, 1)` to the illustration canvas, so a kid raising
       their right hand sees the skeleton's hand go up on their right.
-- [ ] **Camera placement note.** The camera has to see the trick-or-treaters,
-      and it can't see through the sheet. Mount it at the side or top edge of
-      the sheet, angled at the porch. Then add a GUI "crop/zoom" control so
-      the area people actually stand in fills the projection.
+- [ ] **Camera placement: overhead, shooting down.** The camera can't see
+      through the sheet, so it hangs above the spot where people stand and
+      looks straight down. Pose models are trained mostly on upright,
+      side-on views, so top-down tracking may be weaker (foreshortened
+      limbs, heads hiding shoulders). Test this early with a top-down video
+      in the test mode, and check whether the joint mapping and smoothing
+      still look right. Then add a GUI "crop/zoom" control so the area
+      people actually stand in fills the projection.
 - [x] Canvas size controls, plus skeleton size, stretch and position controls,
       all saved between reloads. "Fill window" plus fullscreen (`F`) sizes
       the canvas to the projector.
@@ -168,8 +174,10 @@ drops below 24 fps, try MoveNet MultiPose before moving on.
       for now. Make the background pure black (`#000`), not `background.png`. Black
       means no light on the sheet, so only the bones glow.
 - [x] Hide the controls and the FPS meter for the show (key `H`).
-- [ ] Optional idle behavior: when nobody is in frame, show a "come dance!"
-      prompt or a looping recorded skeleton.
+- [ ] **"Come dance!" idle screen.** When nobody is in frame, show the
+      prompt in a big, blocky, italic display font (bundle the font file in
+      `public/` so it works offline). Fade it out when a body appears. A
+      looping recorded skeleton is an optional extra.
 
 **Done when:** standing on the street side of the sheet, a raised right hand
 shows up on the viewer's right, nothing is stretched, and only the skeleton
@@ -221,6 +229,13 @@ camera frame
   in the background don't get skeletons.
 - **Nice to have:** fade a skeleton in over about 10 frames when it appears
   and out when it disappears, instead of popping.
+
+### How we test it
+
+Use the video test mode (see Next up) in place of the camera. Feed it a
+multi-person clip, and a top-down one once the overhead camera is in
+question, so tracking, crossing paths and fps can be checked repeatably
+without a live crowd. Live testing on the porch comes last.
 
 ### Tasks
 - [ ] `pose/tracker.js` with stable IDs, plus a unit test using hand-made
@@ -309,3 +324,7 @@ Add a dated line for each decision, benchmark or finished phase.
 - 2026-10-24: Halloween branch confirmed working; tagged
   `halloween-waypoint-1` as a safe point to return to. Added the pop-out
   control panel and the multi-body test mode to the top of the roadmap.
+- 2026-10-24: Phase 1 benchmarked on the show laptop with 1 person: 60 fps.
+  2 and 4 person runs will use the video test mode. Camera will be overhead,
+  shooting down. "Come dance!" idle screen is now a planned item, in a big
+  blocky italic font.
