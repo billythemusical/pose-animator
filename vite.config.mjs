@@ -6,6 +6,10 @@ export default defineConfig({
   // Relative asset paths so dist/ works from any folder or file host.
   base: './',
   plugins: [bridgePlugin()],
+  server: {
+    // Lets a phone on the same wifi open this machine as <name>.local.
+    allowedHosts: ['.local'],
+  },
   build: {
     sourcemap: false,
     // TF.js alone is ~1MB; a single bundle is fine for a local show.

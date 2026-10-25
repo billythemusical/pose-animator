@@ -24,8 +24,11 @@ state. Go back to it any time with `git checkout halloween-waypoint-1`.
 - [x] **Backgrounds.** Drop png/jpg/webp files in `resources/backgrounds/`
       and they appear in the background list, with a fit setting (cover,
       stretch, tile) so images no longer tile by default.
-- [x] **`yarn watch`**: dev server on the network with hot reload and no
-      browser auto-open. `yarn show` builds and serves `dist/` the same way.
+- [x] **`yarn dev`** is the way to run it: hot reload on every save (the
+      main page and the panel both reload and reconnect), and reachable from
+      a phone on the same wifi at `http://<computer name>.local:5173/panel.html`
+      (this machine: `bbmacbook2.local`). The `.local` name follows the
+      machine across DHCP changes; an IP address may not.
 
 - [x] **Multi-body test mode** (code done, needs a look on the real setup).
       A "Test mode" folder in the controls plays a recorded clip in place of
@@ -342,10 +345,11 @@ Add a dated line for each decision, benchmark or finished phase.
   detect and 2 ms skeleton per frame, 27-31 fps (headless, software
   rendering and a large video frame, so it says little about the show
   laptop). The file-picker button wasn't exercised headlessly.
-- 2026-10-24: Control panel window, bridge, background list and `yarn
-  watch` added. Headless test with a fake panel over the bridge: changed
+- 2026-10-24: Control panel window, bridge and background list added. Headless test with a fake panel over the bridge: changed
   `maxPeople` to 4 and started the clip remotely, status came back. The
   clip is 3840x2160 and mostly wide shots: 1-2 poses per frame, 15-28 fps
   in headless Chrome, and track IDs ran past 28 in 30 s (people lost and
   re-found), so it is a rough load test and a hint that tracking needs
   looking at for small or distant bodies.
+- 2026-10-24: Dropped `yarn watch` and `yarn show`; `yarn dev` now serves on
+  the network and allows `.local` host names for phone access.
