@@ -28,6 +28,22 @@
             position: absolute;
         }
 
+        /* "Let's dance!" sign, centered over the canvas while nobody is in frame. */
+        #idle-prompt {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: min(80%, 800px);
+            height: auto;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+
+        #idle-prompt.visible {
+            opacity: 1;
+        }
+
         .footer {
             position: fixed;
             left: 0;
@@ -118,6 +134,7 @@
             </video>
         </div>
         <canvas class="illustration-canvas"></canvas>
+        <img id="idle-prompt" alt="">
         <!-- <img src='resources/images/dance-crop.png' width=960 height=720 /> -->
     </div>
     <div class="footer">

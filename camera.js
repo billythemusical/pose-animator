@@ -31,6 +31,7 @@ import {buildControls} from './controls';
 import {connectBridge} from './sync/bridgeClient';
 import {applyRemoteSettings} from './sync/settingsSync';
 
+import idlePromptUrl from './resources/images/lets-dance-crop.png';
 import * as bonesSVG from './resources/samples/my-bones-5-white.svg';
 // import * as girlSVG from './resources/illustration/girl.svg';
 // import * as boySVG from './resources/illustration/boy.svg';
@@ -364,6 +365,7 @@ function detectPoseInRealTime(video) {
     // No face tracking: the head follows the pose model's nose and ear points.
     cast.update(tracked, null);
     cast.draw(settings.debug.showIllustrationDebug);
+    updateIdlePrompt();
     const __t2 = performance.now();
     const W = window; W.__a = W.__a || {d: 0, u: 0, n: 0, p: 0, s: 0, ids: new Set(), start: performance.now()};
     W.__a.d += __t1 - __t0; W.__a.u += __t2 - __t1; W.__a.n++; W.__a.p += poses.length; W.__a.s += cast.byTrackId.size;
@@ -410,6 +412,21 @@ function sendPoses(tracked, everyFrame) {
 const DEBUG_VIEW_WIDTH = 480;
 const DEBUG_VIEW_INTERVAL_MS = 100;
 const debugCanvas = document.createElement('canvas');
+// Show the "let's dance" sign once nobody has been in frame for a moment, so
+// a dropped detection doesn't make it flash.
+const IDLE_AFTER_MS = 1500;
+let lastBodySeen = performance.now();
+let idleShowing = false;
+function updateIdlePrompt() {
+  const now = performance.now();
+  if (cast.byTrackId.size > 0) lastBodySeen = now;
+  const idle = now - lastBodySeen > IDLE_AFTER_MS;
+  if (idle !== idleShowing) {
+    idleShowing = idle;
+    document.getElementById('idle-prompt').classList.toggle('visible', idle);
+  }
+}
+
 let lastDebugFrame = 0;
 let debugFrameEncoding = false;
 
@@ -454,6 +471,7 @@ function setupCanvas() {
   canvasScope = paper.default;
   illustrationCanvas = document.querySelector('.illustration-canvas');
   canvasScope.setup(illustrationCanvas);
+  document.getElementById('idle-prompt').src = idlePromptUrl;
   applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
 }
 

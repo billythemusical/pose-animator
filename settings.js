@@ -79,6 +79,9 @@ export function applyCanvasSettings(canvasScope, canvas, projection) {
       new canvasScope.Size(projection.canvasWidth, projection.canvasHeight);
   // Mirroring is display-only, for rear projection through a sheet.
   canvas.style.transform = projection.mirror ? 'scaleX(-1)' : '';
+  // The idle sign is part of the picture, so it flips with it.
+  const idle = document.getElementById('idle-prompt');
+  if (idle) idle.style.transform = projection.mirror ? 'scaleX(-1)' : '';
   const url = backgroundUrl(projection.background);
   canvas.style.backgroundImage = url ? `url('${url}')` : 'none';
   canvas.style.backgroundColor = 'black';
