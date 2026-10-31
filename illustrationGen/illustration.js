@@ -65,11 +65,18 @@ export class PoseIllustration {
         });
     }
 
-    draw() {
-        if (!this.skeleton.isValid) {
+    // opacity: 1 draws straight onto the layer; less fades the whole figure
+    // as one piece, so overlapping bones don't show through each other.
+    draw(opacity = 1) {
+        if (!this.skeleton.isValid || opacity <= 0) {
             return;
         }
         let scope = this.scope;
+        let target = scope.project.activeLayer;
+        if (opacity < 1) {
+            target = new scope.Group({opacity});
+            scope.project.activeLayer.addChild(target);
+        }
         // Add paths
         this.skinnedPaths.forEach(skinnedPath => {
             // Do not render paths with low confidence scores.
@@ -90,7 +97,7 @@ export class PoseIllustration {
             if (skinnedPath.closed) {
                 path.closePath();
             }
-            scope.project.activeLayer.addChild(path);
+            target.addChild(path);
         });
     }
 

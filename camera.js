@@ -27,6 +27,7 @@ import {PoseDetector} from './pose/poseDetector';
 import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './settings';
 import {PoseTracker} from './pose/tracker';
 import {trackColor} from './pose/trackColor';
+import {footY} from './pose/ground';
 import {buildControls} from './controls';
 import {connectBridge} from './sync/bridgeClient';
 import {applyRemoteSettings} from './sync/settingsSync';
@@ -77,7 +78,6 @@ async function setupCamera() {
   }
 
   const video = document.getElementById('video');
-  video.style = "display: none"
   stopSource(video);
 
   // Ask for the camera's own aspect ratio rather than a square, so people at
@@ -102,7 +102,6 @@ async function setupCamera() {
  */
 async function setupVideoFile(url) {
   const video = document.getElementById('video');
-  video.style = "display: none"
   stopSource(video);
 
   video.loop = true;
@@ -199,6 +198,7 @@ function applySetting(section, key) {
     if (key === 'minConfidence') poseDetector.setOptions({minConfidence: value});
   } else if (section === 'projection') {
     applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
+    applyCameraOverlay();
   } else if (section === 'camera') {
     // The camera stream has to restart.
     location.reload();
@@ -362,8 +362,11 @@ function detectPoseInRealTime(video) {
 
     canvasScope.project.clear();
 
+    const matrix = getSkeletonMatrix(canvasScope, settings, videoWidth, videoHeight);
+    placeCameraOverlay(matrix);
+
     // No face tracking: the head follows the pose model's nose and ear points.
-    cast.update(tracked, null);
+    cast.update(tracked, null, placementFor(matrix));
     cast.draw(settings.debug.showIllustrationDebug);
     updateIdlePrompt();
     const __t2 = performance.now();
@@ -376,8 +379,7 @@ function detectPoseInRealTime(video) {
       W.__a = {d: 0, u: 0, n: 0, p: 0, s: 0, ids: a.ids, start: performance.now()};
     }
 
-    canvasScope.project.activeLayer.transform(
-        getSkeletonMatrix(canvasScope, settings, videoWidth, videoHeight));
+    canvasScope.project.activeLayer.transform(matrix);
 
     // End monitoring code for frames per second
     stats.end();
@@ -395,6 +397,64 @@ function detectPoseInRealTime(video) {
   }
 
   poseDetectionFrame();
+}
+
+/**
+ * Where, how big and how visible each person should be drawn. The camera
+ * looks down at the floor, so how far a person's feet are toward the sheet
+ * edge of the view says how near the sheet they are: nearer is bigger and
+ * lower on the floor, and the far end of the view fades out.
+ */
+function placementFor(matrix) {
+  const {canvasHeight} = settings.projection;
+  const {onFloor, floorLine, floorDepth, nearEdge, farScale, nearScale, fadeFar} = settings.skeleton;
+  return (pose) => {
+    const feet = footY(pose);
+    if (feet === null) return null;
+    const fraction = feet / videoHeight;
+    const near = Math.min(1, Math.max(0, nearEdge === 'bottom' ? fraction : 1 - fraction));
+    const canvasY = ((floorLine + (near - 0.5) * floorDepth) / 100) * canvasHeight;
+    return {
+      // Undo the video-to-canvas matrix (which only scales and translates).
+      floor: onFloor ? (canvasY - matrix.ty) / matrix.d : null,
+      scale: farScale + (nearScale - farScale) * near,
+      presence: fadeFar > 0 ? Math.min(1, near / (fadeFar / 100)) : 1,
+    };
+  };
+}
+
+/** Shows or hides the camera view that sits over the background. */
+function applyCameraOverlay() {
+  const {showCamera, cameraOpacity, canvasWidth, canvasHeight, mirror} = settings.projection;
+  const holder = document.getElementById('main');
+  Object.assign(holder.style, {
+    width: canvasWidth + 'px',
+    height: canvasHeight + 'px',
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    transform: mirror ? 'scaleX(-1)' : '',
+  });
+  Object.assign(video.style, {
+    display: showCamera ? 'block' : 'none',
+    opacity: cameraOpacity,
+    position: 'absolute',
+    left: '0',
+    top: '0',
+    transformOrigin: '0 0',
+    // Replace the selfie flip the page used to put on this element.
+    webkitTransform: '',
+  });
+}
+
+let overlayTransform = '';
+/** Lays the camera view over the same area of the canvas as the skeletons. */
+function placeCameraOverlay(m) {
+  if (!settings.projection.showCamera) return;
+  const transform = `matrix(${m.a}, ${m.b}, ${m.c}, ${m.d}, ${m.tx}, ${m.ty})`;
+  if (transform !== overlayTransform) {
+    overlayTransform = transform;
+    video.style.transform = transform;
+  }
 }
 
 /** Sends the tracked people's points; the panel draws them over its own camera view. */
@@ -564,6 +624,7 @@ export async function bindPage() {
 
   setupGui();
   setupFPS();
+  applyCameraOverlay();
   
   toggleLoadingUI(false);
   detectPoseInRealTime(video);

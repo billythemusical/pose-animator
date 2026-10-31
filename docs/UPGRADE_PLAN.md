@@ -403,3 +403,20 @@ Add a dated line for each decision, benchmark or finished phase.
   skulls are the originals; the lettering is redrawn in Bangers
   (`resources/fonts/Bangers-Regular.ttf`, SIL Open Font License), which is a
   close but not exact match for the old lettering.
+- 2026-10-28: Camera view on the projector (Projection: "camera on
+  projector" and "camera opacity", set from the panel). It sits over the
+  background and under the skeletons, lined up with the same matrix.
+  "Keep on floor" (Skeleton, on by default): each pose is shifted so its feet
+  (ankles, else the lowest visible point) land on the floor line (85% down
+  the canvas); "floor depth %" lets people drift a few percent up and down
+  the floor with their height in the camera view. The shift is eased to hide
+  flicker (`pose/ground.js`, `Cast.grounded`). The panel's camera view still
+  shows the raw points. Checked on the four-dancers clip only; the real
+  overhead camera is untested. Not committed yet.
+- 2026-10-28: Walking toward the sheet. Skeleton settings "sheet is toward"
+  (which edge of the camera view is nearest the sheet), "size when far/near"
+  and "fade when far %". People nearer the sheet are drawn bigger and lower
+  on the floor; the far end of the view fades out. Skeletons also fade in
+  (0.4 s) when they appear and fade out when they leave, instead of popping.
+  `Cast.placed`, `placementFor` in camera.js. Defaults are guesses (bottom,
+  0.7 to 1.2, 25%); tune on the real overhead view.

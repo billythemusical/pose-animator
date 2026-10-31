@@ -29,12 +29,30 @@ export const DEFAULTS = {
     background: 'background.png',
     // How an image fills the canvas: cover, stretch or tile.
     backgroundFit: 'cover',
+    // Show the camera view over the background, under the skeletons.
+    showCamera: false,
+    cameraOpacity: 0.5,
   },
   skeleton: {
     size: 1,
     stretch: 2,
     offsetX: 0,
     offsetY: 0,
+    // Keep feet on the floor line instead of following the body's height.
+    // floorLine is a percent down the canvas; floorDepth is how many percent
+    // of the canvas a person drifts up and down it as they move in the camera.
+    onFloor: true,
+    floorLine: 85,
+    floorDepth: 10,
+    // Walking toward the sheet: which edge of the camera view is closest to
+    // it. People there are drawn at nearScale and lower on the floor, people
+    // at the far edge at farScale. Set both to 1 for no size change.
+    nearEdge: 'bottom',
+    farScale: 0.7,
+    nearScale: 1.2,
+    // Skeletons fade out over this percent of the view nearest the far edge.
+    // 0 turns the fade off.
+    fadeFar: 25,
   },
   // Not saved: these always start off.
   debug: {

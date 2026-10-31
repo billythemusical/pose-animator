@@ -22,10 +22,12 @@
             background-repeat: no-repeat;
         }
 
+        /* Holds the camera view when it's shown on the projector. */
         #main {
             left: 0;
             top: 0;
             position: absolute;
+            z-index: 2;
         }
 
         /* "Let's dance!" sign, centered over the canvas while nobody is in frame. */
@@ -125,13 +127,7 @@
     </div>
     <div class="canvas-container">
         <div id='main'>
-            <video id="video" playsinline style=" -moz-transform: scaleX(-1);
-            -o-transform: scaleX(-1);
-            -webkit-transform: scaleX(-1);
-            transform: scaleX(-1);
-            display: none;
-            ">
-            </video>
+            <video id="video" playsinline style="display: none"></video>
         </div>
         <canvas class="illustration-canvas"></canvas>
         <img id="idle-prompt" alt="">

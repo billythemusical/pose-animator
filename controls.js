@@ -52,6 +52,8 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   bind(projection, 'projection', 'canvasHeight', 200, 3840, 10);
   bind(projection, 'projection', 'background', BACKGROUND_NAMES);
   bind(projection, 'projection', 'backgroundFit', ['cover', 'stretch', 'tile']).name('background fit');
+  bind(projection, 'projection', 'showCamera').name('camera on projector');
+  bind(projection, 'projection', 'cameraOpacity', 0.05, 1, 0.05).name('camera opacity');
   projection.add({fillWindow: () => onAction('fillWindow')}, 'fillWindow')
       .name(isPanel ? 'fill projector window' : 'fill window');
   projection.add({toggleFullscreen: () => onAction('toggleFullscreen')}, 'toggleFullscreen')
@@ -63,6 +65,13 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   bind(skeleton, 'skeleton', 'stretch', 0.5, 4, 0.01);
   bind(skeleton, 'skeleton', 'offsetX', -100, 100, 0.5).name('left / right');
   bind(skeleton, 'skeleton', 'offsetY', -100, 100, 0.5).name('up / down');
+  bind(skeleton, 'skeleton', 'onFloor').name('keep on floor');
+  bind(skeleton, 'skeleton', 'floorLine', 0, 100, 0.5).name('floor line %');
+  bind(skeleton, 'skeleton', 'floorDepth', 0, 40, 0.5).name('floor depth %');
+  bind(skeleton, 'skeleton', 'nearEdge', ['bottom', 'top']).name('sheet is toward');
+  bind(skeleton, 'skeleton', 'farScale', 0.2, 2, 0.05).name('size when far');
+  bind(skeleton, 'skeleton', 'nearScale', 0.2, 2, 0.05).name('size when near');
+  bind(skeleton, 'skeleton', 'fadeFar', 0, 60, 1).name('fade when far %');
   skeleton.add({resetLayout: () => onAction('resetLayout')}, 'resetLayout').name('reset layout');
   skeleton.open();
 
