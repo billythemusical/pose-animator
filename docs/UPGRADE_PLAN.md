@@ -426,3 +426,11 @@ Add a dated line for each decision, benchmark or finished phase.
   replaced them all. Now a panel sends only the value it changed, ignores
   controls until the show page's full settings have arrived, and the bridge
   folds each change into the last full copy it replays to new pages.
+- 2026-10-28: Saved settings. The show page PUTs its settings to
+  `settings/last.json` (500 ms after the last change) and loads them at
+  start, ahead of the browser's localStorage. Named presets live in
+  `settings/presets/*.json` (`sync/settingsStore.mjs`, `/api/presets`).
+  The panel and show page have a "Save and undo" folder: undo (30 steps,
+  changes within 1 s are one step), save as preset, load, delete. Loading a
+  preset can be undone. Tested with fake bridge clients against a running
+  server and a headless page, not on a phone.

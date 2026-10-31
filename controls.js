@@ -10,12 +10,13 @@ import {BACKGROUND_NAMES} from './backgrounds';
 /**
  * @param settings the shared settings object (see settings.js)
  * @param status   read-only values shown in the controls: {source,
- *                 cameraGives, fps, people, mainWindow}
+ *                 cameraGives, fps, people, mainWindow, saved}
  * @param videos   (panel only) file names in test/fixtures to offer in test mode
+ * @param presets  names of the saved presets
  * @param isPanel  true in the separate panel window
  * @returns {gui, refresh} - call refresh() after settings change elsewhere
  */
-export function buildControls(settings, status, {onChange, onAction, isPanel = false, videos = []}) {
+export function buildControls(settings, status, {onChange, onAction, isPanel = false, videos = [], presets = []}) {
   const gui = new dat.GUI({width: isPanel ? 400 : 300, autoPlace: !isPanel});
   if (isPanel) {
     document.getElementById('controls').appendChild(gui.domElement);
@@ -100,6 +101,28 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   test.add({useCamera: () => onAction('useCamera')}, 'useCamera').name('use camera');
   test.open();
 
+  // Saved setups. The show page keeps the last settings on disk by itself;
+  // presets are named copies to go back to.
+  const saves = gui.addFolder('Save and undo');
+  readOnly(saves, 'saved', 'last settings saved');
+  saves.add({undo: () => onAction('undo')}, 'undo').name('undo last change');
+  const chosen = {name: '', preset: ''};
+  saves.add(chosen, 'name').name('new preset name');
+  saves.add({save: () => chosen.name.trim() && onAction('savePreset', chosen.name.trim())}, 'save')
+      .name('save as preset');
+  let presetList = saves.add(chosen, 'preset', ['']).name('preset');
+  const setPresets = (names) => {
+    if (!names.includes(chosen.preset)) chosen.preset = names[0] || '';
+    presetList = presetList.options(names.length ? names : ['']).name('preset');
+    presetList.setValue(chosen.preset);
+  };
+  setPresets(presets);
+  saves.add({load: () => chosen.preset && onAction('loadPreset', chosen.preset)}, 'load')
+      .name('load preset');
+  saves.add({remove: () => chosen.preset && onAction('deletePreset', chosen.preset)}, 'remove')
+      .name('delete preset');
+  saves.open();
+
   const debug = gui.addFolder('Debug control');
   bind(debug, 'debug', 'cameraView', ['light', 'live', 'off']).name('panel camera view');
   bind(debug, 'debug', 'showIllustrationDebug');
@@ -109,6 +132,8 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
       .flatMap((g) => g.__controllers);
   return {
     gui,
+    /** Updates the list of presets to choose from. */
+    setPresets,
     /** Re-reads every control from `settings` and `status`. */
     refresh: () => allControllers().forEach((c) => c.updateDisplay()),
   };

@@ -82,13 +82,53 @@ export function loadSettings() {
   return settings;
 }
 
-export function saveSettings(settings) {
+/** The part of the settings that is saved: everything but the debug section. */
+export function savable(settings) {
+  const {debug, ...saved} = settings;
+  return saved;
+}
+
+let diskSaveTimer = null;
+let onDiskSaved = () => {};
+
+/** Called after each write to settings/last.json, with whether it worked. */
+export function setDiskSaveListener(listener) {
+  onDiskSaved = listener;
+}
+
+/** The settings saved on disk by an earlier session, or null. */
+export async function loadSavedFromDisk() {
   try {
-    const {debug, ...saved} = settings;
+    const response = await fetch('/api/settings/last');
+    return response.ok ? await response.json() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Writes to the browser (so a reload keeps them) and, a moment later, to
+// settings/last.json on the laptop (so a restart, or a different browser,
+// does too). The wait lets a slider drag count as one save.
+export function saveSettings(settings) {
+  const saved = savable(settings);
+  try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   } catch (e) {
-    // Settings just won't persist.
+    // The browser copy just won't persist.
   }
+  clearTimeout(diskSaveTimer);
+  diskSaveTimer = setTimeout(async () => {
+    try {
+      const response = await fetch('/api/settings/last', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(saved),
+      });
+      onDiskSaved(response.ok);
+    } catch (e) {
+      onDiskSaved(false);
+    }
+  }, 500);
 }
 
 /** Applies size, mirroring and background to the illustration canvas. */

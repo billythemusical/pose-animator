@@ -27,6 +27,9 @@ The show page (`/`) is what goes on the projector. Press `F` for fullscreen and 
 - Same controls as the show page, plus the camera view with the detected points. While a panel is open, the show page hides its own controls and fps meter.
 - Panel and show page talk over a WebSocket at `/bridge`, built into the Vite server (`sync/bridgePlugin.mjs`). There is no password, so use it on a network you trust.
 - On the same Wi-Fi it also works from a phone: `http://<computer name>.local:5173/panel.html`.
+- **Save and undo** folder: the show page writes every change to `settings/last.json` (git-ignored) and loads it on start, so a restart comes back as you left it. **save as preset** keeps a named copy in `settings/presets/` (committed, so presets are backups); **load preset** and **delete preset** use the list. **undo last change** steps back (30 steps; a slider drag counts as one).
+- A panel sends only the control you changed, and does nothing until it has the show page's settings, so a phone can't overwrite your setup with defaults.
+- **Projection > camera on projector** shows the camera view under the skeletons. **Skeleton > keep on floor** puts feet on a floor line; people nearer the sheet are drawn bigger and lower, the far end fades out (**sheet is toward** says which edge of the camera view is nearest it).
 - **panel camera view** (Debug control): `light` (default) sends points about 10 times a second, `live` every frame, `off` nothing. The show comes first, so drop this if fps suffers.
 - "fullscreen projector window" needs one click on the projector window, because browsers require a click in the window itself. It then fills the canvas to the screen.
 

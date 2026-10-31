@@ -24,7 +24,7 @@ import {Cast} from './illustrationGen/cast';
 import {Skeleton} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
-import {DEFAULTS, loadSettings, saveSettings, applyCanvasSettings, getSkeletonMatrix} from './settings';
+import {DEFAULTS, loadSettings, saveSettings, savable, loadSavedFromDisk, setDiskSaveListener, applyCanvasSettings, getSkeletonMatrix} from './settings';
 import {PoseTracker} from './pose/tracker';
 import {trackColor} from './pose/trackColor';
 import {footY} from './pose/ground';
@@ -146,7 +146,7 @@ async function loadVideo() {
 }
 
 // Read-only values the controls display (also sent to the panel window).
-const status = {source: 'camera', cameraGives: '-', fps: '-', people: '-'};
+const status = {source: 'camera', cameraGives: '-', fps: '-', people: '-', saved: '-'};
 // Set when the source (and so the video size) changes, so the frame loop
 // resizes its canvases and starts tracking fresh.
 let sourceChanged = false;
@@ -209,8 +209,86 @@ function sendSettings() {
   bridge.send({type: 'settings', full: true, settings});
 }
 
+// Undo: the settings as they were before each change. Changes within a second
+// of each other (a slider drag) count as one.
+const UNDO_STEPS = 30;
+const UNDO_GAP_MS = 1000;
+const undoStack = [];
+let lastChangeAt = 0;
+let beforeChange = null;
+
+function snapshot() {
+  return JSON.stringify(savable(settings));
+}
+
+/** Call right after settings change, to make that change undoable. */
+function recordChange() {
+  const now = performance.now();
+  if (now - lastChangeAt > UNDO_GAP_MS) {
+    undoStack.push(beforeChange);
+    if (undoStack.length > UNDO_STEPS) undoStack.shift();
+  }
+  lastChangeAt = now;
+  beforeChange = snapshot();
+}
+
+/** Replaces the settings with a saved copy, applying whatever differs. */
+function restoreSettings(saved) {
+  const changed = applyRemoteSettings(settings, saved);
+  changed.forEach(([section, key]) => applySetting(section, key));
+  saveSettings(settings);
+  controls.refresh();
+  sendSettings();
+  beforeChange = snapshot();
+}
+
+function undo() {
+  const previous = undoStack.pop();
+  if (!previous) return;
+  restoreSettings(JSON.parse(previous));
+  // The next change starts a new step.
+  lastChangeAt = 0;
+}
+
+async function loadPreset(name) {
+  try {
+    const response = await fetch('/api/presets/' + encodeURIComponent(name));
+    if (!response.ok) throw new Error(response.status);
+    const saved = await response.json();
+    undoStack.push(snapshot());
+    restoreSettings(saved);
+    lastChangeAt = 0;
+    status.saved = `loaded preset ${name}`;
+  } catch (e) {
+    status.saved = `could not load ${name}`;
+  }
+}
+
+async function savePreset(name) {
+  try {
+    const response = await fetch('/api/presets/' + encodeURIComponent(name), {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(savable(settings)),
+    });
+    if (!response.ok) throw new Error((await response.json()).error);
+    status.saved = `preset ${name} saved ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    status.saved = `could not save ${name}: ${e.message}`;
+  }
+}
+
+async function deletePreset(name) {
+  await fetch('/api/presets/' + encodeURIComponent(name), {method: 'DELETE'}).catch(() => {});
+}
+
+setDiskSaveListener((ok) => {
+  status.saved = ok ? 'saved ' + new Date().toLocaleTimeString() : 'COULD NOT SAVE to disk';
+});
+
 /** A control on this page changed. */
 function onSettingChange(section, key) {
+  recordChange();
   saveSettings(settings);
   applySetting(section, key);
   sendSettings();
@@ -218,6 +296,7 @@ function onSettingChange(section, key) {
 
 /** Something on this page changed several settings at once. */
 function onSettingsReplaced(sections) {
+  recordChange();
   sections.forEach((section) => Object.keys(settings[section]).forEach((key) => applySetting(section, key)));
   saveSettings(settings);
   controls.refresh();
@@ -232,6 +311,10 @@ function runAction(name, value) {
     // why this isn't done automatically on load.
     window.open('panel.html', 'pose-animator-panel', 'popup,width=440,height=900');
   }
+  if (name === 'undo') undo();
+  if (name === 'savePreset') savePreset(value);
+  if (name === 'loadPreset') loadPreset(value);
+  if (name === 'deletePreset') deletePreset(value);
   if (name === 'chooseVideoFile') chooseVideoFile();
   if (name === 'useCamera') switchSource(setupCamera, 'camera');
   if (name === 'playVideoUrl') switchSource(() => setupVideoFile(value), 'video: ' + decodeURIComponent(value.split('/').pop()));
@@ -246,11 +329,14 @@ function runAction(name, value) {
 function onBridgeMessage(message) {
   if (message.type === 'settings') {
     const changed = applyRemoteSettings(settings, message.settings);
+    if (changed.length) recordChange();
     saveSettings(settings);
     changed.forEach(([section, key]) => applySetting(section, key));
     controls.refresh();
   } else if (message.type === 'action') {
     runAction(message.name, message.value);
+  } else if (message.type === 'presets') {
+    controls.setPresets(message.names);
   } else if (message.type === 'peers') {
     panelConnected = message.panel;
     applyPanelPresence();
@@ -277,10 +363,11 @@ function applyPanelPresence() {
  * Sets up the dat.gui controls on the top-right of the window, and connects
  * to the bridge so a separate panel window can drive the same controls.
  */
-function setupGui() {
+async function setupGui() {
   controls = buildControls(settings, status, {
     onChange: onSettingChange,
     onAction: runAction,
+    presets: await fetch('/api/presets').then((r) => r.json()).catch(() => []),
   });
 
   const image = controls.gui.addFolder('Image');
@@ -298,6 +385,7 @@ function setupGui() {
       cameraGives: status.cameraGives,
       fps: status.fps,
       people: status.people,
+      saved: status.saved,
     }});
   }, 500);
 }
@@ -597,6 +685,14 @@ document.addEventListener('keydown', (e) => {
  * available camera devices, and setting off the detectPoseInRealTime function.
  */
 export async function bindPage() {
+  // What was saved on disk wins over this browser's copy, so a restart (or a
+  // different browser) comes back the way it was left.
+  const onDisk = await loadSavedFromDisk();
+  if (onDisk) {
+    applyRemoteSettings(settings, onDisk);
+    status.saved = 'restored from disk';
+  }
+  beforeChange = snapshot();
   setupCanvas();
 
   toggleLoadingUI(true);
@@ -622,7 +718,7 @@ export async function bindPage() {
     throw e;
   }
 
-  setupGui();
+  await setupGui();
   setupFPS();
   applyCameraOverlay();
   

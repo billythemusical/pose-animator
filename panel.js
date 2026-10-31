@@ -9,7 +9,7 @@ import {applyRemoteSettings} from './sync/settingsSync';
 import {PanelView} from './panelView';
 
 const settings = JSON.parse(JSON.stringify(DEFAULTS));
-const status = {source: '-', cameraGives: '-', fps: '-', people: '-', mainWindow: 'not connected'};
+const status = {source: '-', cameraGives: '-', fps: '-', people: '-', mainWindow: 'not connected', saved: '-'};
 const banner = document.getElementById('banner');
 
 let controls = null;
@@ -29,6 +29,7 @@ function setConnected(serverUp, mainUp) {
 async function start() {
   // The clips in test/fixtures, for the test mode dropdown.
   const videos = await fetch('/api/videos').then((r) => r.json()).catch(() => []);
+  const presets = await fetch('/api/presets').then((r) => r.json()).catch(() => []);
 
   view = new PanelView(
       document.getElementById('view'),
@@ -37,7 +38,8 @@ async function start() {
   controls = buildControls(settings, status, {
     isPanel: true,
     videos,
-    onChange: () => {
+    presets,
+    onChange: (section, key) => {
       view.setMode(settings.debug.cameraView);
       if (!synced) {
         // Don't send, and put the control back.
@@ -63,6 +65,8 @@ async function start() {
       Object.assign(status, message.status);
       view.setSource(status.source);
       controls.refresh();
+    } else if (message.type === 'presets') {
+      controls.setPresets(message.names);
     } else if (message.type === 'poses') {
       view.setPoses(message);
     } else if (message.type === 'peers') {

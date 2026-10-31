@@ -10,6 +10,7 @@ import {createReadStream} from 'node:fs';
 import {readdir, stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {WebSocketServer, WebSocket} from 'ws';
+import {serveSettings} from './settingsStore.mjs';
 
 const PATH = '/bridge';
 // Message types whose most recent copy is replayed to new connections.
@@ -88,6 +89,9 @@ function attach(httpServer) {
     });
     ws.on('close', announcePeers);
   });
+
+  // Tells every page which presets exist.
+  return (names) => broadcast(JSON.stringify({type: 'presets', names}));
 }
 
 // The mp4 files in test/fixtures, for the panel's test mode list.
@@ -153,12 +157,12 @@ export function bridgePlugin() {
   return {
     name: 'pose-animator-bridge',
     configureServer: (server) => {
-      attach(server.httpServer);
+      serveSettings(server, attach(server.httpServer));
       serveVideos(server);
       openPanelWindow(server.httpServer);
     },
     configurePreviewServer: (server) => {
-      attach(server.httpServer);
+      serveSettings(server, attach(server.httpServer));
       serveVideos(server);
     },
   };
