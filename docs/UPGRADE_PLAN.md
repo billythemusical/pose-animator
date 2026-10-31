@@ -15,6 +15,9 @@ Waypoints (known-working states; go back with `git checkout <tag>`):
 - `halloween-waypoint-2` (2026-10-24): control panel window, bridge, video
   test mode, backgrounds, camera view in the panel, face detection removed,
   "COME DANCE!" idle sign.
+- `halloween-waypoint-3` (2026-10-31): camera view on the projector, skeletons
+  kept on the floor (nearer is bigger, far end fades), fade in and out, panels
+  send only what they change, settings saved to disk with presets and undo.
 
 The items below are done and kept as a record. What's left is in
 [Open items](#open-items).
