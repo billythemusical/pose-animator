@@ -420,3 +420,9 @@ Add a dated line for each decision, benchmark or finished phase.
   (0.4 s) when they appear and fade out when they leave, instead of popping.
   `Cast.placed`, `placementFor` in camera.js. Defaults are guesses (bottom,
   0.7 to 1.2, 25%); tune on the real overhead view.
+- 2026-10-28: Fixed a panel overwriting the whole setup. A panel used to send
+  its entire settings on every change, starting from defaults, so a panel
+  that hadn't received the show page's settings yet (or held stale ones)
+  replaced them all. Now a panel sends only the value it changed, ignores
+  controls until the show page's full settings have arrived, and the bridge
+  folds each change into the last full copy it replays to new pages.

@@ -206,7 +206,7 @@ function applySetting(section, key) {
 }
 
 function sendSettings() {
-  bridge.send({type: 'settings', settings});
+  bridge.send({type: 'settings', full: true, settings});
 }
 
 /** A control on this page changed. */

@@ -2,8 +2,8 @@
 // panel pages over a WebSocket at /bridge. It runs inside the Vite dev and
 // preview servers, so there is nothing extra to start, and a panel on another
 // machine only needs the laptop's address. The server keeps no state of its
-// own beyond the last settings and status message, which it replays to pages
-// that connect later.
+// own beyond the last complete settings and status message, which it replays
+// to pages that connect later.
 
 import {execFile} from 'node:child_process';
 import {createReadStream} from 'node:fs';
@@ -31,6 +31,23 @@ function attach(httpServer) {
     const has = (role) => [...wss.clients].some((client) => client.role === role);
     if (!has('main')) delete latest.status;
     broadcast(JSON.stringify({type: 'peers', main: has('main'), panel: has('panel')}));
+  };
+
+  // The show page sends its complete settings; a panel sends just the value
+  // it changed. Folding those changes into the last complete copy keeps what
+  // new pages are replayed up to date, and a panel that never got the full
+  // settings can't replace them with its own defaults.
+  const remember = (message) => {
+    if (message.full) {
+      latest.settings = JSON.stringify(message);
+      return;
+    }
+    if (!latest.settings) return;
+    const full = JSON.parse(latest.settings);
+    for (const [section, values] of Object.entries(message.settings || {})) {
+      if (full.settings[section]) Object.assign(full.settings[section], values);
+    }
+    latest.settings = JSON.stringify(full);
   };
 
   // Only claim our own path; Vite's hot-reload socket upgrades on the same
@@ -62,7 +79,11 @@ function attach(httpServer) {
         announcePeers();
         return;
       }
-      if (REPLAYED.includes(message.type)) latest[message.type] = text;
+      if (message.type === 'settings') {
+        remember(message);
+      } else if (message.type === 'status') {
+        latest.status = text;
+      }
       broadcast(text, ws);
     });
     ws.on('close', announcePeers);

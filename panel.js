@@ -15,7 +15,9 @@ const banner = document.getElementById('banner');
 let controls = null;
 let view = null;
 let bridge = null;
-const send = () => bridge.send({type: 'settings', settings});
+// Until the show page's settings arrive, this page only has defaults, and
+// sending anything from them would overwrite the real setup.
+let synced = false;
 
 function setConnected(serverUp, mainUp) {
   status.mainWindow = mainUp ? 'connected' : 'not connected';
@@ -37,7 +39,15 @@ async function start() {
     videos,
     onChange: () => {
       view.setMode(settings.debug.cameraView);
-      send();
+      if (!synced) {
+        // Don't send, and put the control back.
+        settings[section][key] = DEFAULTS[section][key];
+        controls.refresh();
+        return;
+      }
+      // Send only the value that changed, never the whole set, so a stale
+      // copy of the other values can't overwrite them.
+      bridge.send({type: 'settings', settings: {[section]: {[key]: settings[section][key]}}});
     },
     onAction: (name, value) => bridge.send({type: 'action', name, value}),
   });
@@ -45,6 +55,7 @@ async function start() {
   // Connect last: messages from the show page need the controls to exist.
   bridge = connectBridge('panel', (message) => {
     if (message.type === 'settings') {
+      if (message.full) synced = true;
       applyRemoteSettings(settings, message.settings);
       view.setMode(settings.debug.cameraView);
       controls.refresh();
@@ -61,7 +72,10 @@ async function start() {
       controls.refresh();
     }
   }, (connected) => {
-    if (!connected) setConnected(false, false);
+    if (!connected) {
+      synced = false;
+      setConnected(false, false);
+    }
   }, (frame) => view.setFrame(frame));
 }
 
