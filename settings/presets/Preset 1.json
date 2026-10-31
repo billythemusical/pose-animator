@@ -1,0 +1,32 @@
+{
+  "pose": {
+    "model": "lite",
+    "maxPeople": 2,
+    "minConfidence": 0.5
+  },
+  "camera": {
+    "resolution": "640x360"
+  },
+  "projection": {
+    "mirror": true,
+    "canvasWidth": 1024,
+    "canvasHeight": 768,
+    "background": "Midnight Chase Through the Haunted Valley.png",
+    "backgroundFit": "cover",
+    "showCamera": true,
+    "cameraOpacity": 0.9
+  },
+  "skeleton": {
+    "size": 0.51,
+    "stretch": 1.59,
+    "offsetX": 0,
+    "offsetY": 0,
+    "onFloor": true,
+    "floorLine": 85,
+    "floorDepth": 10,
+    "nearEdge": "bottom",
+    "farScale": 0.7,
+    "nearScale": 1.05,
+    "fadeFar": 24
+  }
+}
