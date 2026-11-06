@@ -77,7 +77,7 @@ export class Physics {
         RAPIER.RigidBodyDesc.dynamic()
             .setTranslation(x, y, flat ? 0 : z)
             .setCcdEnabled(true)
-            .setEnabledTranslations(true, true, !flat));
+            .enabledTranslations(true, true, !flat));
     const collider = this.world.createCollider(
         RAPIER.ColliderDesc.ball(ballSize)
             .setRestitution(bounciness)
