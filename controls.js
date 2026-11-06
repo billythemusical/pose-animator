@@ -76,6 +76,29 @@ export function buildControls(settings, status, {onChange, onAction, isPanel = f
   skeleton.add({resetLayout: () => onAction('resetLayout')}, 'resetLayout').name('reset layout');
   skeleton.open();
 
+  // Only used by the 3D show (the show page opened with ?3d).
+  const stage = gui.addFolder('3D stage');
+  bind(stage, 'stage3d', 'character', ['marshmallow-man', 'skeleton']);
+  bind(stage, 'stage3d', 'camera', ['orthographic', 'perspective']);
+  bind(stage, 'stage3d', 'viewHeight', 1.5, 8, 0.1).name('view height (m)');
+  bind(stage, 'stage3d', 'depth', ['MediaPipe', 'limb length']).name('depth from');
+  bind(stage, 'stage3d', 'depthAmount', 0, 1.5, 0.05).name('depth amount');
+  bind(stage, 'stage3d', 'follow', 0.05, 1, 0.05).name('follow speed');
+  stage.open();
+
+  const balls = gui.addFolder('Balls');
+  bind(balls, 'balls', 'enabled').name('balls on');
+  bind(balls, 'balls', 'flat').name('stay in sheet plane');
+  bind(balls, 'balls', 'maxBalls', 1, 80, 1).name('max balls');
+  bind(balls, 'balls', 'ballSize', 0.04, 0.4, 0.01).name('ball size (m)');
+  bind(balls, 'balls', 'bounciness', 0, 1, 0.05);
+  bind(balls, 'balls', 'gravity', 0, 15, 0.1);
+  bind(balls, 'balls', 'spawnRate', 0, 10, 0.1).name('drop per second');
+  bind(balls, 'balls', 'limbThickness', 0.3, 3, 0.05).name('limb thickness');
+  balls.add({dropBalls: () => onAction('dropBalls')}, 'dropBalls').name('drop 5 balls now');
+  balls.add({clearBalls: () => onAction('clearBalls')}, 'clearBalls').name('clear balls');
+  balls.open();
+
   // Takes effect on reload, since the camera stream has to restart.
   const camera = gui.addFolder('Camera');
   bind(camera, 'camera', 'resolution', ['640x360', '640x480', '1280x720']).name('resolution (reloads)');

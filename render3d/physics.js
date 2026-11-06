@@ -152,6 +152,17 @@ export class Physics {
     }
   }
 
+  /** Takes a dancer out for good, freeing their bodies (tracker IDs never repeat). */
+  removeDancer(key) {
+    const dancer = this.dancers.get(key);
+    if (!dancer) return;
+    dancer.limbs.forEach((limb) => {
+      this.dancerColliders.delete(limb.collider.handle);
+      this.world.removeRigidBody(limb.body);
+    });
+    this.dancers.delete(key);
+  }
+
   createLimb() {
     const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
     const collider = this.world.createCollider(

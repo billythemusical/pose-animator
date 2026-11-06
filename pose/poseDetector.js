@@ -63,7 +63,11 @@ export class PoseDetector {
     const timestamp = Math.max(performance.now(), this.lastTimestamp + 1);
     this.lastTimestamp = timestamp;
     const result = this.landmarker.detectForVideo(video, timestamp);
-    return result.landmarks.map(
-        (landmarks) => toPoseNetFormat(landmarks, width, height, true));
+    return result.landmarks.map((landmarks, i) => {
+      const pose = toPoseNetFormat(landmarks, width, height, true);
+      // MediaPipe's 3D joints in meters, for the 3D stage. Raw: not mirrored.
+      pose.world = result.worldLandmarks && result.worldLandmarks[i];
+      return pose;
+    });
   }
 }

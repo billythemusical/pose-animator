@@ -24,10 +24,12 @@ import {Cast} from './illustrationGen/cast';
 import {Skeleton} from './illustrationGen/skeleton';
 import {FileUtils} from './utils/fileUtils';
 import {PoseDetector} from './pose/poseDetector';
-import {DEFAULTS, loadSettings, saveSettings, savable, loadSavedFromDisk, setDiskSaveListener, applyCanvasSettings, getSkeletonMatrix} from './settings';
+import {DEFAULTS, loadSettings, saveSettings, savable, loadSavedFromDisk, setDiskSaveListener, applyCanvasSettings, applyCanvasStyle, getSkeletonMatrix} from './settings';
+import {Stage} from './render3d/stage';
+import {Cast3D} from './render3d/cast3d';
 import {PoseTracker} from './pose/tracker';
 import {trackColor} from './pose/trackColor';
-import {footY} from './pose/ground';
+import {centerX, footY} from './pose/ground';
 import {buildControls} from './controls';
 import {connectBridge} from './sync/bridgeClient';
 import {applyRemoteSettings} from './sync/settingsSync';
@@ -49,6 +51,11 @@ let videoHeight = 300;
 // Canvas
 // One skeleton per tracked person (up to settings.pose.maxPeople).
 let cast = null;
+// The 3D show: open the page with ?3d. Everything else (camera, pose model,
+// tracker, panel, settings) is shared with the 2D show.
+const use3d = new URLSearchParams(location.search).has('3d');
+let stage = null;
+let cast3d = null;
 let tracker = null;
 let canvasScope;
 let illustrationCanvas;
@@ -193,12 +200,25 @@ function applySetting(section, key) {
     if (key === 'model') poseDetector.setOptions({model: value});
     if (key === 'maxPeople') {
       poseDetector.setOptions({numPoses: value});
-      cast.resize(value);
+      (use3d ? cast3d : cast).resize(value);
     }
     if (key === 'minConfidence') poseDetector.setOptions({minConfidence: value});
   } else if (section === 'projection') {
-    applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
+    if (use3d) {
+      applyCanvasStyle(illustrationCanvas, settings.projection);
+      stage.applyView();
+    } else {
+      applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
+    }
     applyCameraOverlay();
+  } else if (section === 'stage3d' && use3d) {
+    if (key === 'character') cast3d.setCharacter(value, settings.pose.maxPeople);
+    if (key === 'camera' || key === 'viewHeight') stage.applyView();
+  } else if (section === 'skeleton' && use3d) {
+    // The floor line is where the balls land.
+    stage.applyBounds();
+  } else if (section === 'balls' && use3d) {
+    stage.applyBallOptions();
   } else if (section === 'camera') {
     // The camera stream has to restart.
     location.reload();
@@ -311,6 +331,8 @@ function runAction(name, value) {
     // why this isn't done automatically on load.
     window.open('panel.html', 'pose-animator-panel', 'popup,width=440,height=900');
   }
+  if (name === 'dropBalls' && stage) stage.dropBalls();
+  if (name === 'clearBalls' && stage) stage.clearBalls();
   if (name === 'undo') undo();
   if (name === 'savePreset') savePreset(value);
   if (name === 'loadPreset') loadPreset(value);
@@ -370,10 +392,12 @@ async function setupGui() {
     presets: await fetch('/api/presets').then((r) => r.json()).catch(() => []),
   });
 
-  const image = controls.gui.addFolder('Image');
-  image.add({avatarSVG: Object.keys(avatarSvgs)[0]}, 'avatarSVG', Object.keys(avatarSvgs))
-      .onChange((name) => parseSVG(avatarSvgs[name]));
-  image.open();
+  if (!use3d) {
+    const image = controls.gui.addFolder('Image');
+    image.add({avatarSVG: Object.keys(avatarSvgs)[0]}, 'avatarSVG', Object.keys(avatarSvgs))
+        .onChange((name) => parseSVG(avatarSvgs[name]));
+    image.open();
+  }
 
   bridge = connectBridge('main', onBridgeMessage, (connected) => {
     // This page is the source of truth: a panel that connects gets our state.
@@ -448,18 +472,22 @@ function detectPoseInRealTime(video) {
       if (panelWantsFrames) sendDebugFrame(video, tracked);
     }
 
-    canvasScope.project.clear();
+    if (!use3d) canvasScope.project.clear();
 
     const matrix = getSkeletonMatrix(canvasScope, settings, videoWidth, videoHeight);
     placeCameraOverlay(matrix);
 
-    // No face tracking: the head follows the pose model's nose and ear points.
-    cast.update(tracked, null, placementFor(matrix));
-    cast.draw(settings.debug.showIllustrationDebug);
+    if (use3d) {
+      frame3d(tracked, matrix);
+    } else {
+      // No face tracking: the head follows the pose model's nose and ear points.
+      cast.update(tracked, null, placementFor(matrix));
+      cast.draw(settings.debug.showIllustrationDebug);
+    }
     updateIdlePrompt();
     const __t2 = performance.now();
     const W = window; W.__a = W.__a || {d: 0, u: 0, n: 0, p: 0, s: 0, ids: new Set(), start: performance.now()};
-    W.__a.d += __t1 - __t0; W.__a.u += __t2 - __t1; W.__a.n++; W.__a.p += poses.length; W.__a.s += cast.byTrackId.size;
+    W.__a.d += __t1 - __t0; W.__a.u += __t2 - __t1; W.__a.n++; W.__a.p += poses.length; W.__a.s += peopleShown();
     tracked.forEach((t) => W.__a.ids.add(t.id));
     if (W.__a.n === 90) {
       const a = W.__a;
@@ -467,7 +495,7 @@ function detectPoseInRealTime(video) {
       W.__a = {d: 0, u: 0, n: 0, p: 0, s: 0, ids: a.ids, start: performance.now()};
     }
 
-    canvasScope.project.activeLayer.transform(matrix);
+    if (!use3d) canvasScope.project.activeLayer.transform(matrix);
 
     // End monitoring code for frames per second
     stats.end();
@@ -476,7 +504,7 @@ function detectPoseInRealTime(video) {
     const now = performance.now();
     if (now - fpsStart >= 500) {
       status.fps = String(Math.round((frames * 1000) / (now - fpsStart)));
-      status.people = String(cast.byTrackId.size);
+      status.people = String(peopleShown());
       frames = 0;
       fpsStart = now;
     }
@@ -509,6 +537,34 @@ function placementFor(matrix) {
       presence: fadeFar > 0 ? Math.min(1, near / (fadeFar / 100)) : 1,
     };
   };
+}
+
+function peopleShown() {
+  return (use3d ? cast3d : cast).byTrackId.size;
+}
+
+let last3d = null;
+/** One frame of the 3D show: poses the characters, runs the balls, draws. */
+function frame3d(tracked, matrix) {
+  const now = performance.now();
+  const dt = last3d === null ? 0 : Math.min((now - last3d) / 1000, 0.1);
+  last3d = now;
+
+  // The same floor, size and fade rules as the 2D show, turned into world meters.
+  const place = placementFor(matrix);
+  const placeFor = (pose) => {
+    const placement = place(pose);
+    const feet = footY(pose);
+    const x = centerX(pose);
+    if (!placement || feet === null || x === null) return null;
+    const canvasX = matrix.a * x + matrix.tx;
+    const canvasY = matrix.d * (placement.floor === null ? feet : placement.floor) + matrix.ty;
+    const world = stage.canvasToWorld(canvasX, canvasY);
+    return {x: world.x, y: world.y, scale: settings.skeleton.size * placement.scale, presence: placement.presence};
+  };
+  cast3d.update(tracked, placeFor, settings.stage3d, settings.skeleton.stretch);
+  stage.update(cast3d.limbs(settings.balls.limbThickness), dt);
+  stage.render();
 }
 
 /** Shows or hides the camera view that sits over the background. */
@@ -567,7 +623,7 @@ let lastBodySeen = performance.now();
 let idleShowing = false;
 function updateIdlePrompt() {
   const now = performance.now();
-  if (cast.byTrackId.size > 0) lastBodySeen = now;
+  if (peopleShown() > 0) lastBodySeen = now;
   const idle = now - lastBodySeen > IDLE_AFTER_MS;
   if (idle !== idleShowing) {
     idleShowing = idle;
@@ -616,11 +672,18 @@ function sendDebugFrame(video, tracked) {
 function setupCanvas() {
   mobile = isMobile();
 
+  // Paper stays loaded in 3D too, for the video-to-canvas matrix.
   canvasScope = paper.default;
   illustrationCanvas = document.querySelector('.illustration-canvas');
-  canvasScope.setup(illustrationCanvas);
   document.getElementById('idle-prompt').src = idlePromptUrl;
-  applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
+  if (use3d) {
+    stage = new Stage(illustrationCanvas, settings);
+    cast3d = new Cast3D(stage.scene);
+    applyCanvasStyle(illustrationCanvas, settings.projection);
+  } else {
+    canvasScope.setup(illustrationCanvas);
+    applyCanvasSettings(canvasScope, illustrationCanvas, settings.projection);
+  }
 }
 
 // Sizes the canvas to the window: in fullscreen, that's the projector.
@@ -705,7 +768,11 @@ export async function bindPage() {
 
   setStatusText('Loading Avatar file...');
   let t0 = new Date();
-  await parseSVG(Object.values(avatarSvgs)[0]);
+  if (use3d) {
+    await cast3d.setCharacter(settings.stage3d.character, settings.pose.maxPeople);
+  } else {
+    await parseSVG(Object.values(avatarSvgs)[0]);
+  }
 
   setStatusText('Setting up camera...');
   try {
@@ -728,7 +795,7 @@ export async function bindPage() {
 
 navigator.getUserMedia = navigator.getUserMedia ||
     navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-FileUtils.setDragDropHandler((result) => {parseSVG(result)});
+FileUtils.setDragDropHandler((result) => {if (!use3d) parseSVG(result)});
 
 async function parseSVG(target) {
   let svgScope = await SVGUtils.importSVG(target /* SVG string or file path */);

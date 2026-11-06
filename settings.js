@@ -54,6 +54,34 @@ export const DEFAULTS = {
     // 0 turns the fade off.
     fadeFar: 25,
   },
+  // The 3D show (open the show page with ?3d).
+  stage3d: {
+    character: 'marshmallow-man',
+    camera: 'orthographic',
+    // How many meters tall the view is. Bigger shows people smaller.
+    viewHeight: 3,
+    // Where the depth comes from. MediaPipe's own, or the 2D points plus how
+    // long each limb is, which may hold up better from an overhead camera.
+    depth: 'MediaPipe',
+    // 0 flattens the dancer onto the sheet, 1 keeps all the depth.
+    depthAmount: 1,
+    // How quickly the character follows the dancer: 1 is instantly.
+    follow: 0.6,
+  },
+  balls: {
+    // Balls only appear when this is on.
+    enabled: false,
+    // Balls stay in the plane of the sheet, so what looks like a hit is one.
+    flat: true,
+    maxBalls: 20,
+    ballSize: 0.12,
+    bounciness: 0.7,
+    gravity: 4,
+    // Balls dropped per second from the top.
+    spawnRate: 1,
+    // Multiplies how thick the dancers' limbs are to the balls.
+    limbThickness: 1,
+  },
   // Not saved: these always start off.
   debug: {
     showIllustrationDebug: false,
@@ -135,6 +163,11 @@ export function saveSettings(settings) {
 export function applyCanvasSettings(canvasScope, canvas, projection) {
   canvasScope.view.viewSize =
       new canvasScope.Size(projection.canvasWidth, projection.canvasHeight);
+  applyCanvasStyle(canvas, projection);
+}
+
+/** The mirroring and background, which any kind of canvas gets the same way. */
+export function applyCanvasStyle(canvas, projection) {
   // Mirroring is display-only, for rear projection through a sheet.
   canvas.style.transform = projection.mirror ? 'scaleX(-1)' : '';
   // The idle sign is part of the picture, so it flips with it.
