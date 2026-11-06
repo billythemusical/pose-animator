@@ -3,6 +3,12 @@
 Goal: rear-project dancing skeletons onto a sheet in the garage, one skeleton
 per trick-or-treater, running smoothly on the show laptop.
 
+**Status: finished (2026-11-05).** Halloween 2026 ran on this setup and it
+worked. This plan is closed and kept as a record; tag `halloween-2026-final`
+marks the last commit. The 3D phase continues on the `3d` branch with its own
+roadmap in `docs/3D_PLAN.md`. Open items below were never ticked on the real
+setup and stay as they were.
+
 **How to use this file:** it's the progress tracker. Tick a box when its
 **Done when** check passes on the real setup, not just when the code is
 written. Add a dated line to the [Log](#log) when you finish a phase or make
@@ -15,6 +21,8 @@ Waypoints (known-working states; go back with `git checkout <tag>`):
 - `halloween-waypoint-2` (2026-10-24): control panel window, bridge, video
   test mode, backgrounds, camera view in the panel, face detection removed,
   "COME DANCE!" idle sign.
+- `halloween-2026-final` (2026-11-05): the finished Halloween 2026 show, with
+  Preset 1 and Preset 2 (2 is the best working setup).
 - `halloween-waypoint-3` (2026-10-31): camera view on the projector, skeletons
   kept on the floor (nearer is bigger, far end fades), fade in and out, panels
   send only what they change, settings saved to disk with presets and undo.
@@ -437,3 +445,7 @@ Add a dated line for each decision, benchmark or finished phase.
   changes within 1 s are one step), save as preset, load, delete. Loading a
   preset can be undone. Tested with fake bridge clients against a running
   server and a headless page, not on a phone.
+- 2026-10-31: Show night. The setup worked.
+- 2026-11-05: Project closed as a working, finished Halloween 2026 build.
+  Tagged `halloween-2026-final`. Next phase (3D character, Three.js, physics
+  balls) starts on the `3d` branch; see `docs/3D_PLAN.md`.
