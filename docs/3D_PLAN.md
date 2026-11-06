@@ -176,3 +176,16 @@ tunnels through the character.
 - 2026-11-05: Built phases 0 to 4 in code: bone contract, retargeter, physics,
   generated characters, `?3d` stage, Cast3D and panel controls. 38 unit tests
   pass. Browser check on the dance clips still to do.
+- 2026-11-05: First browser check, headless Chrome on `four-dancers.mp4`
+  (`node scripts/browser-check.mjs "/?3d&video=/api/video/four-dancers.mp4" 40`,
+  needs `yarn dev` running; saves a screenshot and console log to
+  `browser-check/`). Works end to end: two Stay Puft characters posed from the
+  clip, standing on the floor line over the background, no console errors.
+  Headless software rendering ran at about 2 fps (detect 567 ms), so it says
+  nothing about the show laptop. **Not yet seen:** the balls. In one run the
+  `?balls` switch (turns them on for one page load) read false at the end, in a
+  later 20 s run it read true. Likely cause: another open show page or panel
+  pushing its own settings over the bridge while testing; not confirmed, so
+  close other pages before a check. Physics itself did load and registered 2
+  dancers. Still to check: balls landing and being batted (run 60 s or more with
+  `?balls`), arms against the clip by eye, the depth setting, fps on the laptop.

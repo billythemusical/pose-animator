@@ -679,6 +679,8 @@ function setupCanvas() {
   if (use3d) {
     stage = new Stage(illustrationCanvas, settings);
     cast3d = new Cast3D(stage.scene);
+    // For scripts/browser-check.mjs to look inside.
+    window.pa3d = {stage, cast3d, settings};
     applyCanvasStyle(illustrationCanvas, settings.projection);
   } else {
     canvasScope.setup(illustrationCanvas);
@@ -755,6 +757,9 @@ export async function bindPage() {
     applyRemoteSettings(settings, onDisk);
     status.saved = 'restored from disk';
   }
+  // ?balls turns the balls on for this page load, so a test run doesn't have to
+  // change the saved settings.
+  if (use3d && new URLSearchParams(location.search).has('balls')) settings.balls.enabled = true;
   beforeChange = snapshot();
   setupCanvas();
 

@@ -79,6 +79,9 @@ public/mediapipe/
 # Third-party test video; kept local because the repo is public
 test/fixtures/*.mp4
 
+# Output of scripts/browser-check.mjs
+browser-check/
+
 # Third-party character: kept local because the repo is public. Regenerate with
 # node scripts/build-characters.mjs
 resources/models/marshmallow-man.glb
