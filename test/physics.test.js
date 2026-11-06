@@ -82,6 +82,17 @@ test('a fast ball does not tunnel through a thin limb', () => {
   assert.ok(ball.body.translation().x > 0, `bounced back, x=${ball.body.translation().x}`);
 });
 
+test('a removed dancer frees their bodies', () => {
+  const physics = makeWorld({gravity: 0});
+  const limb = [{a: {x: 0, y: 0.8, z: 0}, b: {x: 0, y: 1.2, z: 0}, radius: 0.1}];
+  physics.setDancer('a', limb);
+  const before = physics.world.bodies.len();
+  physics.removeDancer('a');
+  assert.equal(physics.world.bodies.len(), before - 1);
+  assert.equal(physics.dancers.size, 0);
+  assert.equal(physics.dancerColliders.size, 0);
+});
+
 test('a dancer set to null stops colliding', () => {
   const physics = makeWorld({gravity: 0});
   const limb = [{a: {x: 0, y: 0.8, z: 0}, b: {x: 0, y: 1.2, z: 0}, radius: 0.1}];
