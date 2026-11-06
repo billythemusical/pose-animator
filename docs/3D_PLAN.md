@@ -33,12 +33,39 @@ Branch: `3d`, forked from `halloween-2026-final`. The 2D show on
 
 | Phase | What | Status |
 |---|---|---|
-| 0 | Three.js scene on the projector page, camera and black background | ☐ |
-| 1 | Load and show a rigged character | ☐ |
-| 2 | Drive the rig from the pose | ☐ |
-| 3 | Multiple people, ground, fades (parity with the 2D show) | ☐ |
-| 4 | Physics balls | ☐ |
+| 0 | Three.js scene on the projector page, camera and black background | built, not yet seen in a browser |
+| 1 | Load and show a rigged character | built (two generated characters), not yet seen in a browser |
+| 2 | Drive the rig from the pose | built and unit-tested, not yet tried on real clips |
+| 3 | Multiple people, ground, fades (parity with the 2D show) | built, not yet tried or benchmarked |
+| 4 | Physics balls | built and unit-tested, not yet tried with a dancer |
 | 5 | Show polish | ☐ |
+
+**Where it stands (2026-11-05):** all the code for phases 0 to 4 is on the `3d`
+branch and `yarn test` passes (38 tests: retargeting on both characters, joint
+conversion, physics). Open `/?3d` to use it. None of it has been looked at in a
+browser yet, so no "Done when" below is ticked. Next step: open
+`/?3d&video=/api/video/four-dancers.mp4` and check the arms, the floor, the fade
+and the balls by eye, then benchmark fps.
+
+## Decisions
+
+- **Characters:** Stay Puft (`marshmallow-man`) first, then the skeleton. Both
+  are generated from plain shapes by `node scripts/build-characters.mjs`; no
+  Blender needed. Any GLB that follows `render3d/rigContract.js` can replace
+  them. Ball collider thickness is set per character in
+  `render3d/characters.js` (`limbScale`).
+- **Stay Puft stays out of git** because the repo is public and he's Sony's
+  character (`.gitignore` lists `resources/models/marshmallow-man.glb`).
+  Regenerate him after a fresh checkout; until then the skeleton is used.
+- **Balls stay in the plane of the sheet** by default (`balls.flat`), with
+  limbs squashed onto it, so anything that looks like a hit is one. Turn it off
+  in the panel to let balls have depth.
+- **Depth source is a panel setting** (`stage3d.depth`): MediaPipe's own depth,
+  or a fallback from the 2D positions and each limb's longest seen length. This
+  is how to compare them on the overhead camera. `depth amount` fades either
+  toward flat.
+- **Rapier's locked axes don't hold a ball in the plane** (a set velocity still
+  moves it), so `Physics.keepInPlane()` puts flat balls back after each step.
 
 ### Phase 0: Three.js scene
 
@@ -146,3 +173,6 @@ tunnels through the character.
 
 - 2026-11-05: Halloween 2026 closed and tagged `halloween-2026-final`.
   `3d` branch started. Picked Three.js + Rapier, keeping MediaPipe for pose.
+- 2026-11-05: Built phases 0 to 4 in code: bone contract, retargeter, physics,
+  generated characters, `?3d` stage, Cast3D and panel controls. 38 unit tests
+  pass. Browser check on the dance clips still to do.
