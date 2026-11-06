@@ -85,6 +85,8 @@ export class Physics {
             .setDensity(0.5)
             .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
         body);
+    // Locking on the descriptor alone doesn't hold, so lock the live body too.
+    body.setEnabledTranslations(true, true, !flat, true);
     const ball = {body, collider, flash: 0, id: this.nextBallId++};
     this.balls.push(ball);
     return ball;
@@ -187,6 +189,7 @@ export class Physics {
     for (let i = 1; i <= steps; i++) {
       this.moveDancers(i / steps);
       this.world.step(this.events);
+      this.keepInPlane();
       this.events.drainCollisionEvents((one, two, started) => {
         if (started && (this.dancerColliders.has(one) || this.dancerColliders.has(two))) {
           this.hits++;
@@ -221,6 +224,18 @@ export class Physics {
         limb.collider.setHalfHeight(from.halfHeight + (to.halfHeight - from.halfHeight) * progress);
         limb.collider.setRadius(limb.radius);
       });
+    });
+  }
+
+  // Rapier's locked axes only stop forces, not a velocity that's already there
+  // (a limb's contact can give one), so flat balls are put back in the plane.
+  keepInPlane() {
+    if (!this.options.flat) return;
+    this.balls.forEach((ball) => {
+      const p = ball.body.translation();
+      const v = ball.body.linvel();
+      if (p.z !== 0) ball.body.setTranslation({x: p.x, y: p.y, z: 0}, true);
+      if (v.z !== 0) ball.body.setLinvel({x: v.x, y: v.y, z: 0}, true);
     });
   }
 
